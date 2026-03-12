@@ -27,12 +27,42 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Lazy Connection Middleware - Optimizes for Vercel cold starts
+let isDbConnected = false;
+app.use(async (req, res, next) => {
+    if (!isDbConnected && !req.path.startsWith('/api/health')) {
+        try {
+            await connectDB();
+
+            // Sync database only in development or if a forced sync flag is set
+            if (process.env.NODE_ENV !== 'production' || process.env.FORCE_SYNC === 'true') {
+                await sequelize.sync({ alter: true });
+                console.log('All tables synced');
+            }
+            isDbConnected = true;
+        } catch (err) {
+            console.error('Lazy DB Connection Failed:', err.message);
+            // We don't block the request here, but DB dependent routes will likely fail with 500
+        }
+    }
+    next();
+});
+
 // Serve static files from the public directory (for uploaded PDFs etc)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Basic Route
+// Basic Routes
 app.get('/', (req, res) => {
     res.send('LMS API is running...');
+});
+
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        dbConnected: isDbConnected,
+        env: process.env.NODE_ENV,
+        vercel: !!process.env.VERCEL
+    });
 });
 
 // Public Stats Route — used by login page
@@ -65,26 +95,9 @@ app.use('/api/upload', uploadRoutes);
 
 const PORT = process.env.PORT || 5000;
 
-const startServer = async () => {
-    try {
-        await connectDB();
-
-        // Sync database only in development or if a forced sync flag is set
-        // In production Vercel, frequent syncing can lead to timeouts
-        if (process.env.NODE_ENV !== 'production' || process.env.FORCE_SYNC === 'true') {
-            await sequelize.sync({ alter: true });
-            console.log('All tables synced');
-        }
-    } catch (err) {
-        console.error('Failed to start server:', err.message);
-    }
-
-    // Only listen on a port if not running as a Vercel Serverless Function
-    if (!process.env.VERCEL) {
-        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-    }
-};
-
-startServer();
+// Only listen locally, Vercel handles the export
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
 
 module.exports = app;
