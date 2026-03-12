@@ -1,5 +1,5 @@
-const Flag = require('../models/Flag');
-const Quiz = require('../models/Quiz');
+const { Flag, Quiz, User } = require('../models');
+const { Op } = require('sequelize');
 
 // @desc    Flag a quiz question
 // @route   POST /api/flags
@@ -13,7 +13,7 @@ const createFlag = async (req, res) => {
         }
 
         // Verify quiz exists and questionIndex is valid
-        const quiz = await Quiz.findById(quizId);
+        const quiz = await Quiz.findByPk(quizId);
         if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
         if (questionIndex < 0 || questionIndex >= quiz.questions.length) {
             return res.status(400).json({ message: 'Invalid question index' });
@@ -28,7 +28,8 @@ const createFlag = async (req, res) => {
 
         res.status(201).json({ message: 'Question flagged successfully', flag });
     } catch (error) {
-        if (error.code === 11000) {
+        // Sequelize unique constraint error
+        if (error.name === 'SequelizeUniqueConstraintError') {
             return res.status(400).json({ message: 'You have already flagged this question' });
         }
         res.status(500).json({ message: error.message });
@@ -41,13 +42,20 @@ const createFlag = async (req, res) => {
 const getFlags = async (req, res) => {
     try {
         // Find quizzes created by this instructor
-        const myQuizIds = await Quiz.find({ createdBy: req.user.id }).select('_id');
-        const quizIds = myQuizIds.map(q => q._id);
+        const myQuizzes = await Quiz.findAll({
+            where: { createdBy: req.user.id },
+            attributes: ['id']
+        });
+        const quizIds = myQuizzes.map(q => q.id);
 
-        const flags = await Flag.find({ quizId: { $in: quizIds } })
-            .populate('studentId', 'name email')
-            .populate('quizId', 'title questions')
-            .sort({ createdAt: -1 });
+        const flags = await Flag.findAll({
+            where: { quizId: { [Op.in]: quizIds } },
+            include: [
+                { model: User, as: 'student', attributes: ['id', 'name', 'email'] },
+                { model: Quiz, as: 'quiz', attributes: ['id', 'title', 'questions'] }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
 
         res.json(flags);
     } catch (error) {

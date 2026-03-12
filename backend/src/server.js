@@ -1,7 +1,13 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const connectDB = require('./config/db');
+
+// Load env vars FIRST (before any model imports that use DATABASE_URL)
+dotenv.config();
+
+const { connectDB, sequelize } = require('./config/db');
+const { User, Subject, Quiz } = require('./models');
+
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const subjectRoutes = require('./routes/subjectRoutes');
@@ -11,12 +17,6 @@ const resultRoutes = require('./routes/resultRoutes');
 const flagRoutes = require('./routes/flagRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
-
-// Load env vars
-dotenv.config();
-
-// Connect to database
-connectDB();
 
 const app = express();
 
@@ -32,14 +32,11 @@ app.get('/', (req, res) => {
 // Public Stats Route — used by login page
 app.get('/api/stats', async (req, res) => {
     try {
-        const User = require('./models/User');
-        const Subject = require('./models/Subject');
-        const Quiz = require('./models/Quiz');
         const [students, instructors, subjects, quizzes] = await Promise.all([
-            User.countDocuments({ role: 'STUDENT', status: 'ACTIVE' }),
-            User.countDocuments({ role: 'INSTRUCTOR' }),
-            Subject.countDocuments({}),
-            Quiz.countDocuments({})
+            User.count({ where: { role: 'STUDENT', status: 'ACTIVE' } }),
+            User.count({ where: { role: 'INSTRUCTOR' } }),
+            Subject.count(),
+            Quiz.count()
         ]);
         res.json({ students, instructors, subjects, quizzes });
     } catch (err) {
@@ -60,8 +57,16 @@ app.use('/api/analytics', analyticsRoutes);
 
 const PORT = process.env.PORT || 5000;
 
-if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-}
+const startServer = async () => {
+    await connectDB();
+    await sequelize.sync(); // Tables already created
+    console.log('All tables synced');
+
+    if (process.env.NODE_ENV !== 'production') {
+        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    }
+};
+
+startServer();
 
 module.exports = app;

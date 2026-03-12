@@ -1,19 +1,48 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
 
-const resultSchema = new mongoose.Schema({
-    studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    quizId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz', required: true },
-    subjectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject', required: true }, // Cached for ranking computation
-    score: { type: Number, required: true },
-    percentage: { type: Number, required: true },
-    answers: [{
-        questionIndex: Number,
-        selectedOptionIndex: Number,
-        isCorrect: Boolean
-    }]
-}, { timestamps: true });
+const Result = sequelize.define('Result', {
+    id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true
+    },
+    studentId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: { model: 'users', key: 'id' }
+    },
+    quizId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: { model: 'quizzes', key: 'id' }
+    },
+    subjectId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: { model: 'subjects', key: 'id' }
+    },
+    score: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    percentage: {
+        type: DataTypes.FLOAT,
+        allowNull: false
+    },
+    answers: {
+        type: DataTypes.JSONB,
+        defaultValue: []
+    }
+}, {
+    tableName: 'results',
+    timestamps: true,
+    indexes: [
+        {
+            unique: true,
+            fields: ['studentId', 'quizId']
+        }
+    ]
+});
 
-// Ensure student only attempts once for MVP, or allow multiple and keep latest
-resultSchema.index({ studentId: 1, quizId: 1 }, { unique: true });
-
-module.exports = mongoose.model('Result', resultSchema);
+module.exports = Result;

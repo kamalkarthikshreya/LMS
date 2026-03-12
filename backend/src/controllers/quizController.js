@@ -1,5 +1,4 @@
-const Quiz = require('../models/Quiz');
-const Result = require('../models/Result');
+const { Quiz, Result, Subject, User } = require('../models');
 
 // @desc    Create a quiz
 // @route   POST /api/quizzes
@@ -31,9 +30,21 @@ const createQuiz = async (req, res) => {
 // @access  Private
 const getSubjectQuizzes = async (req, res) => {
     try {
-        const quizzes = await Quiz.find({ subjectId: req.params.subjectId }).select('-questions.correctOptionIndex');
-        // ^ Exclude correctOptionIndex so students don't cheat via network tab
-        res.json(quizzes);
+        const quizzes = await Quiz.findAll({
+            where: { subjectId: req.params.subjectId },
+            attributes: { exclude: [] }
+        });
+
+        // Strip correctOptionIndex from questions to prevent cheating
+        const sanitized = quizzes.map(q => {
+            const plain = q.toJSON();
+            if (plain.questions) {
+                plain.questions = plain.questions.map(({ correctOptionIndex, ...rest }) => rest);
+            }
+            return plain;
+        });
+
+        res.json(sanitized);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -48,11 +59,11 @@ const submitQuizUrl = async (req, res) => {
         const quizId = req.params.id;
         const studentId = req.user.id;
 
-        const quiz = await Quiz.findById(quizId);
+        const quiz = await Quiz.findByPk(quizId);
         if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
 
         // Check if already attempted
-        const existingResult = await Result.findOne({ studentId, quizId });
+        const existingResult = await Result.findOne({ where: { studentId, quizId } });
         if (existingResult) {
             return res.status(400).json({ message: 'You have already attempted this quiz' });
         }
@@ -94,9 +105,13 @@ const submitQuizUrl = async (req, res) => {
 // @access  Private/Student
 const getMyResults = async (req, res) => {
     try {
-        const results = await Result.find({ studentId: req.user.id })
-            .populate('quizId', 'title')
-            .populate('subjectId', 'title');
+        const results = await Result.findAll({
+            where: { studentId: req.user.id },
+            include: [
+                { model: Quiz, as: 'quiz', attributes: ['id', 'title'] },
+                { model: Subject, as: 'subject', attributes: ['id', 'title'] }
+            ]
+        });
         res.json(results);
     } catch (error) {
         res.status(500).json({ message: error.message });
