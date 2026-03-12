@@ -26,6 +26,13 @@ const getSequelize = () => {
         rejectUnauthorized: false
       }
     },
+    // Optimize for Serverless: smaller pool, faster timeout
+    pool: {
+      max: 2,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    },
     logging: false
   });
 

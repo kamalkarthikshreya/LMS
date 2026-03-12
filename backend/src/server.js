@@ -40,15 +40,16 @@ app.use(async (req, res, next) => {
         try {
             await connectDB();
 
-            // Sync database only in development or if a forced sync flag is set
-            if (process.env.NODE_ENV !== 'production' || process.env.FORCE_SYNC === 'true') {
+            // Sync database ONLY in local development
+            // Avoid syncing on Vercel as it adds significant latency to cold starts
+            const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL;
+            if (!isProduction || process.env.FORCE_SYNC === 'true') {
                 await sequelize.sync({ alter: true });
-                console.log('All tables synced');
+                console.log('Database tables synced');
             }
             isDbConnected = true;
         } catch (err) {
             console.error('Lazy DB Connection Failed:', err.message);
-            // We don't block the request here, but DB dependent routes will likely fail with 500
         }
     }
     next();
