@@ -14,15 +14,29 @@ const PINTEREST_IMAGES = [
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
+const DIFFICULTY_COLORS = {
+    Beginner:     { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
+    Intermediate: { bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
+    Advanced:     { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
+};
+
 const AdminDash = ({ currentView = 'overview' }) => {
     const [users, setUsers] = useState([]);
     const [rankings, setRankings] = useState([]);
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // SCRUM-42: Assign subject to instructor
     const [assignModal, setAssignModal] = useState({ open: false, instructor: null, mode: 'assign' });
     const [subjects, setSubjects] = useState([]);
     const [selectedSubjectId, setSelectedSubjectId] = useState('');
     const [assignLoading, setAssignLoading] = useState(false);
+
+    // SCRUM-48: Subject management
+    const [subjectModal, setSubjectModal] = useState({ open: false, mode: 'create', subject: null });
+    const [subjectForm, setSubjectForm] = useState({ subject_name: '', description: '', difficulty: 'Beginner' });
+    const [subjectLoading, setSubjectLoading] = useState(false);
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
 
     useEffect(() => { fetchData(); }, []);
 
@@ -49,9 +63,7 @@ const AdminDash = ({ currentView = 'overview' }) => {
         try {
             const { data } = await api.put(`/admin/users/${id}/status`);
             setUsers(users.map(u => (u._id === id ? data : u)));
-        } catch (error) {
-            console.error('Failed to toggle status', error);
-        }
+        } catch (error) { console.error('Failed to toggle status', error); }
     };
 
     const deleteUser = async (id) => {
@@ -60,7 +72,6 @@ const AdminDash = ({ currentView = 'overview' }) => {
                 await api.delete(`/admin/users/${id}`);
                 setUsers(users.filter(u => u._id !== id));
             } catch (error) {
-                console.error('Failed to delete user', error);
                 alert(error.response?.data?.message || 'Failed to delete user');
             }
         }
@@ -77,23 +88,63 @@ const AdminDash = ({ currentView = 'overview' }) => {
         try {
             const { data } = await api.put(`/admin/users/${id}/verify`);
             setUsers(users.map(u => (u._id === id ? data : u)));
-        } catch (error) {
-            console.error('Failed to manually verify user', error);
-        }
+        } catch (error) { console.error('Failed to manually verify user', error); }
     };
 
-    // Get assigned subject for an instructor (match by instructor_id)
-    const getAssignedSubject = (instructorId) => {
-        return subjects.find(s => s.instructor_id === instructorId) || null;
-    };
+    const getAssignedSubject = (instructorId) =>
+        subjects.find(s => s.instructor_id === instructorId) || null;
 
     const removeSubject = async (subjectId) => {
         if (!window.confirm("Remove this subject assignment?")) return;
         try {
             await api.put(`/subjects/${subjectId}`, { instructor_id: null });
             await fetchData();
+        } catch (err) { console.error('Failed to remove subject', err); }
+    };
+
+    // ── SCRUM-48: Subject CRUD ────────────────────────────────────────────────
+    const openCreateSubject = () => {
+        setSubjectForm({ subject_name: '', description: '', difficulty: 'Beginner' });
+        setSubjectModal({ open: true, mode: 'create', subject: null });
+    };
+
+    const openEditSubject = (subject) => {
+        setSubjectForm({
+            subject_name: subject.subject_name || subject.title || '',
+            description:  subject.description || '',
+            difficulty:   subject.difficulty || 'Beginner',
+        });
+        setSubjectModal({ open: true, mode: 'edit', subject });
+    };
+
+    const handleSubjectSubmit = async () => {
+        if (!subjectForm.subject_name.trim()) return;
+        setSubjectLoading(true);
+        try {
+            if (subjectModal.mode === 'create') {
+                await api.post('/subjects', subjectForm);
+            } else {
+                const id = subjectModal.subject.subject_id || subjectModal.subject._id || subjectModal.subject.id;
+                await api.put(`/subjects/${id}`, subjectForm);
+            }
+            await fetchData();
+            setSubjectModal({ open: false, mode: 'create', subject: null });
         } catch (err) {
-            console.error('Failed to remove subject', err);
+            console.error('Failed to save subject', err);
+            alert(err.response?.data?.message || 'Failed to save subject');
+        } finally {
+            setSubjectLoading(false);
+        }
+    };
+
+    const handleDeleteSubject = async (subject) => {
+        const id = subject.subject_id || subject._id || subject.id;
+        try {
+            await api.delete(`/subjects/${id}`);
+            await fetchData();
+            setDeleteConfirm(null);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to delete subject');
         }
     };
 
@@ -103,7 +154,7 @@ const AdminDash = ({ currentView = 'overview' }) => {
         </div>
     );
 
-    // --- Derived chart data ---
+    // Derived data
     const studentCount    = users.filter(u => u.role === 'STUDENT').length;
     const instructorCount = users.filter(u => u.role === 'INSTRUCTOR').length;
     const adminCount      = users.filter(u => u.role === 'ADMIN').length;
@@ -131,28 +182,21 @@ const AdminDash = ({ currentView = 'overview' }) => {
         { month: 'Apr', users: users.length },
     ];
 
-    // ── Assign Subject Modal ──────────────────────────────────────────────────
+    // ── Assign Subject Modal (SCRUM-42) ───────────────────────────────────────
     const AssignSubjectModal = () => {
         if (!assignModal.open) return null;
         const assignedSubject = getAssignedSubject(assignModal.instructor?._id);
-
         const handleAssign = async () => {
             if (!selectedSubjectId) return;
             setAssignLoading(true);
             try {
-                await api.put(`/subjects/${selectedSubjectId}`, {
-                    instructor_id: assignModal.instructor._id
-                });
+                await api.put(`/subjects/${selectedSubjectId}`, { instructor_id: assignModal.instructor._id });
                 await fetchData();
                 setAssignModal({ open: false, instructor: null, mode: 'assign' });
                 setSelectedSubjectId('');
-            } catch (err) {
-                console.error('Failed to assign subject', err);
-            } finally {
-                setAssignLoading(false);
-            }
+            } catch (err) { console.error('Failed to assign subject', err); }
+            finally { setAssignLoading(false); }
         };
-
         return (
             <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
@@ -162,55 +206,36 @@ const AdminDash = ({ currentView = 'overview' }) => {
                     <p className="text-sm text-slate-400 mb-2">
                         Instructor: <span className="font-bold text-indigo-600">{assignModal.instructor?.name}</span>
                     </p>
-
-                    {/* Show current assignment if changing */}
                     {assignModal.mode === 'change' && assignedSubject && (
                         <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-xl mb-4 font-semibold">
                             Currently assigned: {assignedSubject.subject_name}
                         </p>
                     )}
-
                     {subjects.length === 0 ? (
                         <div className="text-sm text-slate-400 bg-slate-50 rounded-2xl p-4 mb-6 text-center">
-                            No subjects available yet.<br />
+                            No subjects yet.<br />
                             <span className="text-xs">Create subjects from the Subjects page first.</span>
                         </div>
                     ) : (
                         <>
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-400 block mb-2">
-                                Select Subject
-                            </label>
-                            <select
-                                value={selectedSubjectId}
-                                onChange={e => setSelectedSubjectId(e.target.value)}
-                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-400 outline-none mb-6"
-                            >
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-400 block mb-2">Select Subject</label>
+                            <select value={selectedSubjectId} onChange={e => setSelectedSubjectId(e.target.value)}
+                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-400 outline-none mb-6">
                                 <option value="">-- Choose a subject --</option>
                                 {subjects.map(s => (
                                     <option key={s.subject_id} value={s.subject_id}>
                                         {s.subject_name}
-                                        {s.instructor_id && s.instructor_id !== assignModal.instructor?._id
-                                            ? ' (already assigned)'
-                                            : ''}
+                                        {s.instructor_id && s.instructor_id !== assignModal.instructor?._id ? ' (already assigned)' : ''}
                                     </option>
                                 ))}
                             </select>
                         </>
                     )}
-
                     <div className="flex gap-3 justify-end">
-                        <button
-                            onClick={() => {
-                                setAssignModal({ open: false, instructor: null, mode: 'assign' });
-                                setSelectedSubjectId('');
-                            }}
-                            className="px-5 py-2.5 rounded-2xl text-sm font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 transition-all">
-                            Cancel
-                        </button>
+                        <button onClick={() => { setAssignModal({ open: false, instructor: null, mode: 'assign' }); setSelectedSubjectId(''); }}
+                            className="px-5 py-2.5 rounded-2xl text-sm font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 transition-all">Cancel</button>
                         {subjects.length > 0 && (
-                            <button
-                                onClick={handleAssign}
-                                disabled={!selectedSubjectId || assignLoading}
+                            <button onClick={handleAssign} disabled={!selectedSubjectId || assignLoading}
                                 className="px-5 py-2.5 rounded-2xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                                 {assignLoading ? 'Saving...' : assignModal.mode === 'change' ? 'Change' : 'Assign'}
                             </button>
@@ -221,28 +246,91 @@ const AdminDash = ({ currentView = 'overview' }) => {
         );
     };
 
+    // ── Subject Create/Edit Modal (SCRUM-48) ──────────────────────────────────
+    const SubjectModal = () => {
+        if (!subjectModal.open) return null;
+        const isEdit = subjectModal.mode === 'edit';
+        return (
+            <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+                    <h3 className="text-xl font-black text-slate-900 mb-6">
+                        {isEdit ? 'Edit Subject' : 'Create New Subject'}
+                    </h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-400 block mb-2">Subject Name *</label>
+                            <input value={subjectForm.subject_name}
+                                onChange={e => setSubjectForm({ ...subjectForm, subject_name: e.target.value })}
+                                placeholder="e.g. Mathematics, Electronics, DSP..."
+                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-400 outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-400 block mb-2">Description</label>
+                            <textarea value={subjectForm.description}
+                                onChange={e => setSubjectForm({ ...subjectForm, description: e.target.value })}
+                                placeholder="Brief description of the subject..."
+                                rows={3}
+                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-400 outline-none resize-none" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-400 block mb-2">Difficulty</label>
+                            <select value={subjectForm.difficulty}
+                                onChange={e => setSubjectForm({ ...subjectForm, difficulty: e.target.value })}
+                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-400 outline-none">
+                                <option>Beginner</option>
+                                <option>Intermediate</option>
+                                <option>Advanced</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="flex gap-3 justify-end mt-6">
+                        <button onClick={() => setSubjectModal({ open: false, mode: 'create', subject: null })}
+                            className="px-5 py-2.5 rounded-2xl text-sm font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 transition-all">Cancel</button>
+                        <button onClick={handleSubjectSubmit} disabled={!subjectForm.subject_name.trim() || subjectLoading}
+                            className="px-5 py-2.5 rounded-2xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                            {subjectLoading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Subject'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // ── Delete Confirm Modal ──────────────────────────────────────────────────
+    const DeleteConfirmModal = () => {
+        if (!deleteConfirm) return null;
+        return (
+            <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8">
+                    <h3 className="text-lg font-black text-slate-900 mb-2">Delete Subject?</h3>
+                    <p className="text-sm text-slate-500 mb-6">
+                        Are you sure you want to delete <span className="font-bold text-slate-800">{deleteConfirm.subject_name}</span>? This cannot be undone.
+                    </p>
+                    <div className="flex gap-3 justify-end">
+                        <button onClick={() => setDeleteConfirm(null)}
+                            className="px-5 py-2.5 rounded-2xl text-sm font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 transition-all">Cancel</button>
+                        <button onClick={() => handleDeleteSubject(deleteConfirm)}
+                            className="px-5 py-2.5 rounded-2xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition-all">Delete</button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     // ── Shared User Table ─────────────────────────────────────────────────────
-    // showSubjectCol is true ONLY when called from the Instructors view
     const renderUserTable = (filteredUsers, title, showSubjectCol = false) => (
         <div className="space-y-6 animate-fade-in-up">
             <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-black text-slate-900">{title}</h2>
-                <span className="px-4 py-2 bg-indigo-50 text-indigo-700 text-sm font-bold rounded-2xl">
-                    {filteredUsers.length} users
-                </span>
+                <span className="px-4 py-2 bg-indigo-50 text-indigo-700 text-sm font-bold rounded-2xl">{filteredUsers.length} users</span>
             </div>
             <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-slate-100">
                         <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
                             <tr>
-                                {[
-                                    'Name', 'Email', 'Role', 'Status', 'Action',
-                                    ...(showSubjectCol ? ['Subject'] : [])
-                                ].map(h => (
-                                    <th key={h} className="px-4 lg:px-6 py-4 text-left text-[10px] lg:text-xs font-black text-slate-400 uppercase tracking-widest">
-                                        {h}
-                                    </th>
+                                {['Name', 'Email', 'Role', 'Status', 'Action', ...(showSubjectCol ? ['Subject'] : [])].map(h => (
+                                    <th key={h} className="px-4 lg:px-6 py-4 text-left text-[10px] lg:text-xs font-black text-slate-400 uppercase tracking-widest">{h}</th>
                                 ))}
                             </tr>
                         </thead>
@@ -250,8 +338,7 @@ const AdminDash = ({ currentView = 'overview' }) => {
                             {filteredUsers.map((u) => {
                                 const assignedSubject = showSubjectCol ? getAssignedSubject(u._id) : null;
                                 return (
-                                    <tr key={u._id} className="hover:bg-indigo-50/30 transition-colors group">
-                                        {/* Name + ID */}
+                                    <tr key={u._id} className="hover:bg-indigo-50/30 transition-colors">
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-600 flex items-center justify-center text-white text-xs lg:text-sm font-extrabold shadow-sm">
@@ -259,36 +346,27 @@ const AdminDash = ({ currentView = 'overview' }) => {
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-bold text-slate-800">{u.name}</span>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
-                                                        {u.userId || 'N/A'}
-                                                    </span>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{u.userId || 'N/A'}</span>
                                                 </div>
                                             </div>
                                         </td>
-                                        {/* Email */}
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 font-medium">{u.email}</td>
-                                        {/* Role dropdown */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {u.role === 'ADMIN' ? (
                                                 <span className="text-xs font-black text-indigo-500 px-3 py-2 bg-indigo-50 rounded-xl">System Admin</span>
                                             ) : (
-                                                <select
-                                                    value={u.role}
-                                                    onChange={(e) => updateRole(u._id, e.target.value)}
-                                                    className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer"
-                                                >
+                                                <select value={u.role} onChange={(e) => updateRole(u._id, e.target.value)}
+                                                    className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer">
                                                     <option value="STUDENT">Student</option>
                                                     <option value="INSTRUCTOR">Instructor</option>
                                                 </select>
                                             )}
                                         </td>
-                                        {/* Status badge */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-3 py-1.5 text-xs font-black rounded-xl ${u.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
                                                 {u.status}
                                             </span>
                                         </td>
-                                        {/* Actions */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {u.role === 'ADMIN' ? (
                                                 <span className="text-xs font-bold px-4 py-2 text-slate-400">Protected</span>
@@ -296,56 +374,30 @@ const AdminDash = ({ currentView = 'overview' }) => {
                                                 <div className="flex items-center gap-2">
                                                     {!u.isVerified && (
                                                         <button onClick={() => manualVerify(u._id)}
-                                                            className="text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md">
-                                                            Verify
-                                                        </button>
+                                                            className="text-xs font-bold px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm">Verify</button>
                                                     )}
                                                     <button onClick={() => toggleStatus(u._id)}
-                                                        className={`text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm ${u.status === 'ACTIVE' ? 'text-red-500 bg-red-50 hover:bg-red-100 hover:shadow-md' : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 hover:shadow-md'}`}>
+                                                        className={`text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm ${u.status === 'ACTIVE' ? 'text-red-500 bg-red-50 hover:bg-red-100' : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100'}`}>
                                                         {u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
                                                     </button>
                                                     <button onClick={() => deleteUser(u._id)}
-                                                        className="text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm text-red-600 border border-red-200 hover:bg-red-600 hover:text-white hover:shadow-md">
-                                                        Delete
-                                                    </button>
+                                                        className="text-xs font-bold px-4 py-2 rounded-xl text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition-all shadow-sm">Delete</button>
                                                 </div>
                                             )}
                                         </td>
-                                        {/* Subject column — only rendered for Instructors view */}
                                         {showSubjectCol && (
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 {assignedSubject ? (
                                                     <div className="flex items-center gap-2">
-                                                        {/* Show assigned subject name */}
-                                                        <span className="text-xs font-bold px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-xl">
-                                                            {assignedSubject.subject_name}
-                                                        </span>
-                                                        {/* Change button */}
-                                                        <button
-                                                            onClick={() => {
-                                                                setAssignModal({ open: true, instructor: u, mode: 'change' });
-                                                                setSelectedSubjectId('');
-                                                            }}
-                                                            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all">
-                                                            Change
-                                                        </button>
-                                                        {/* Remove button */}
-                                                        <button
-                                                            onClick={() => removeSubject(assignedSubject.subject_id)}
-                                                            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-all">
-                                                            Remove
-                                                        </button>
+                                                        <span className="text-xs font-bold px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-xl">{assignedSubject.subject_name}</span>
+                                                        <button onClick={() => { setAssignModal({ open: true, instructor: u, mode: 'change' }); setSelectedSubjectId(''); }}
+                                                            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all">Change</button>
+                                                        <button onClick={() => removeSubject(assignedSubject.subject_id)}
+                                                            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-all">Remove</button>
                                                     </div>
                                                 ) : (
-                                                    // No subject assigned yet
-                                                    <button
-                                                        onClick={() => {
-                                                            setAssignModal({ open: true, instructor: u, mode: 'assign' });
-                                                            setSelectedSubjectId('');
-                                                        }}
-                                                        className="text-xs font-bold px-4 py-2 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all">
-                                                        Assign Subject
-                                                    </button>
+                                                    <button onClick={() => { setAssignModal({ open: true, instructor: u, mode: 'assign' }); setSelectedSubjectId(''); }}
+                                                        className="text-xs font-bold px-4 py-2 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all">Assign Subject</button>
                                                 )}
                                             </td>
                                         )}
@@ -389,12 +441,8 @@ const AdminDash = ({ currentView = 'overview' }) => {
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 font-medium">
-                                        {act.user ? act.user.role : 'Unknown'}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-semibold">
-                                        {new Date(act.loginTime).toLocaleString()}
-                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 font-medium">{act.user ? act.user.role : 'Unknown'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-semibold">{new Date(act.loginTime).toLocaleString()}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-semibold">
                                         {act.logoutTime ? new Date(act.logoutTime).toLocaleString() : <span className="text-emerald-500">Active</span>}
                                     </td>
@@ -412,11 +460,103 @@ const AdminDash = ({ currentView = 'overview' }) => {
         </div>
     );
 
-    // ── Routed table views ────────────────────────────────────────────────────
-    // showSubjectCol = true ONLY for instructors
-    if (currentView === 'all-users')    return renderUserTable(users, 'All Users', false);
-    if (currentView === 'students')     return renderUserTable(users.filter(u => u.role === 'STUDENT'), 'Students', false);
-    if (currentView === 'instructors')  return renderUserTable(users.filter(u => u.role === 'INSTRUCTOR'), 'Instructors', true);
+    if (currentView === 'all-users')   return renderUserTable(users, 'All Users', false);
+    if (currentView === 'students')    return renderUserTable(users.filter(u => u.role === 'STUDENT'), 'Students', false);
+    if (currentView === 'instructors') return renderUserTable(users.filter(u => u.role === 'INSTRUCTOR'), 'Instructors', true);
+
+    // ── SCRUM-48: Subjects Page ───────────────────────────────────────────────
+    if (currentView === 'subjects') return (
+        <div className="space-y-6 animate-fade-in-up">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-3xl font-black text-slate-900">Subjects</h2>
+                    <p className="text-sm text-slate-400 mt-1">Create and manage subjects. Assign instructors from the Instructors page.</p>
+                </div>
+                <button onClick={openCreateSubject}
+                    className="px-5 py-2.5 rounded-2xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20">
+                    + Create Subject
+                </button>
+            </div>
+
+            {/* Empty state */}
+            {subjects.length === 0 && (
+                <div className="bg-white rounded-3xl border border-slate-100 p-16 text-center">
+                    <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl">📚</span>
+                    </div>
+                    <h3 className="text-lg font-black text-slate-800 mb-2">No subjects yet</h3>
+                    <p className="text-sm text-slate-400 mb-6">Create your first subject to get started.</p>
+                    <button onClick={openCreateSubject}
+                        className="px-6 py-3 rounded-2xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all">
+                        + Create Subject
+                    </button>
+                </div>
+            )}
+
+            {/* Subject Cards Grid */}
+            {subjects.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                    {subjects.map((subject) => {
+                        const diff = subject.difficulty || 'Beginner';
+                        const dc = DIFFICULTY_COLORS[diff] || DIFFICULTY_COLORS.Beginner;
+                        const assignedInstructor = users.find(u => u._id === subject.instructor_id);
+                        const subjectId = subject.subject_id || subject._id || subject.id;
+
+                        return (
+                            <div key={subjectId}
+                                className="bg-white rounded-3xl border border-slate-100 p-6 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 flex flex-col gap-4">
+
+                                {/* Top row */}
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="text-base font-black text-slate-900 truncate">{subject.subject_name || subject.title}</h3>
+                                        {subject.description && (
+                                            <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">{subject.description}</p>
+                                        )}
+                                    </div>
+                                    <span className="text-[10px] font-black px-2.5 py-1 rounded-xl flex-shrink-0"
+                                        style={{ background: dc.bg, color: dc.text, border: `1px solid ${dc.border}` }}>
+                                        {diff}
+                                    </span>
+                                </div>
+
+                                {/* Instructor row */}
+                                <div className="flex items-center gap-2 py-3 border-t border-b border-slate-50">
+                                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-600 flex items-center justify-center text-white text-xs font-extrabold shadow-sm flex-shrink-0">
+                                        {assignedInstructor ? assignedInstructor.name.charAt(0).toUpperCase() : '?'}
+                                    </div>
+                                    {assignedInstructor ? (
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-700">{assignedInstructor.name}</p>
+                                            <p className="text-[10px] text-slate-400">Assigned Instructor</p>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-slate-400 italic">No instructor assigned</p>
+                                    )}
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => openEditSubject(subject)}
+                                        className="flex-1 text-xs font-bold px-3 py-2 rounded-xl bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-all">
+                                        Edit
+                                    </button>
+                                    <button onClick={() => setDeleteConfirm(subject)}
+                                        className="flex-1 text-xs font-bold px-3 py-2 rounded-xl bg-slate-50 text-red-500 hover:bg-red-50 transition-all">
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            <SubjectModal />
+            <DeleteConfirmModal />
+        </div>
+    );
 
     // ── Rankings ──────────────────────────────────────────────────────────────
     if (currentView === 'rankings') return (
@@ -440,29 +580,20 @@ const AdminDash = ({ currentView = 'overview' }) => {
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-slate-100">
                         <thead className="bg-slate-50">
-                            <tr>
-                                {['Rank', 'Student', 'Avg Quiz', 'Completion', 'Final Score'].map(h => (
-                                    <th key={h} className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-left">{h}</th>
-                                ))}
-                            </tr>
+                            <tr>{['Rank', 'Student', 'Avg Quiz', 'Completion', 'Final Score'].map(h => (
+                                <th key={h} className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-left">{h}</th>
+                            ))}</tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-50">
                             {rankings.map((r, i) => (
                                 <tr key={i} className={i < 3 ? 'bg-amber-50/40' : 'hover:bg-slate-50'}>
                                     <td className="px-6 py-4">
-                                        <span className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm ${i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-slate-300 text-white' : i === 2 ? 'bg-orange-300 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                            #{i + 1}
-                                        </span>
+                                        <span className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm ${i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-slate-300 text-white' : i === 2 ? 'bg-orange-300 text-white' : 'bg-slate-100 text-slate-500'}`}>#{i+1}</span>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="font-bold text-slate-900">{r.name}</div>
-                                        <div className="text-xs text-slate-400">{r.email}</div>
-                                    </td>
+                                    <td className="px-6 py-4"><div className="font-bold text-slate-900">{r.name}</div><div className="text-xs text-slate-400">{r.email}</div></td>
                                     <td className="px-6 py-4 text-sm font-semibold text-slate-600">{r.averageQuizScore}%</td>
                                     <td className="px-6 py-4 text-sm font-semibold text-slate-600">{r.completionPercentage}%</td>
-                                    <td className="px-6 py-4">
-                                        <span className="font-black text-lg text-indigo-700">{r.finalRankingScore}</span>
-                                    </td>
+                                    <td className="px-6 py-4"><span className="font-black text-lg text-indigo-700">{r.finalRankingScore}</span></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -509,8 +640,7 @@ const AdminDash = ({ currentView = 'overview' }) => {
                         <PieChart>
                             <Pie data={statusPieData} cx="50%" cy="50%" outerRadius={100} paddingAngle={4} dataKey="value"
                                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                                <Cell fill="#10b981" />
-                                <Cell fill="#ef4444" />
+                                <Cell fill="#10b981" /><Cell fill="#ef4444" />
                             </Pie>
                             <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
                         </PieChart>
@@ -528,9 +658,7 @@ const AdminDash = ({ currentView = 'overview' }) => {
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/80 via-slate-900/60 to-transparent flex items-center px-6 lg:px-12">
                     <div>
                         <p className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-indigo-300 mb-1 lg:mb-2">Admin Dashboard</p>
-                        <h1 className="text-2xl lg:text-4xl font-black text-white leading-tight">
-                            Welcome back,<br /><span className="text-indigo-300">Administrator</span>
-                        </h1>
+                        <h1 className="text-2xl lg:text-4xl font-black text-white leading-tight">Welcome back,<br /><span className="text-indigo-300">Administrator</span></h1>
                     </div>
                 </div>
             </div>
@@ -557,7 +685,7 @@ const AdminDash = ({ currentView = 'overview' }) => {
                             <defs>
                                 <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}   />
+                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -613,9 +741,7 @@ const AdminDash = ({ currentView = 'overview' }) => {
                         {rankings.slice(0, 4).map((rank, i) => (
                             <li key={i} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <span className={`text-xs font-black w-7 h-7 rounded-full flex items-center justify-center ${i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-slate-300 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                        #{i + 1}
-                                    </span>
+                                    <span className={`text-xs font-black w-7 h-7 rounded-full flex items-center justify-center ${i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-slate-300 text-white' : 'bg-slate-100 text-slate-500'}`}>#{i+1}</span>
                                     <div>
                                         <p className="text-sm font-bold text-slate-800 leading-none mb-0.5">{rank.name}</p>
                                         <p className="text-xs text-slate-400">Quiz Avg: {rank.averageQuizScore}%</p>
@@ -624,9 +750,7 @@ const AdminDash = ({ currentView = 'overview' }) => {
                                 <span className="text-sm font-black text-indigo-700">{rank.finalRankingScore}</span>
                             </li>
                         ))}
-                        {rankings.length === 0 && (
-                            <li className="px-6 py-8 text-center text-slate-400 text-sm">No rankings yet.</li>
-                        )}
+                        {rankings.length === 0 && <li className="px-6 py-8 text-center text-slate-400 text-sm">No rankings yet.</li>}
                     </ul>
                 </div>
             </div>

@@ -94,6 +94,7 @@ const DashboardLayout = ({ defaultView = 'dashboard', renderContent }) => {
       { id: 'instructors', label: 'Instructors' },
       { id: 'rankings', label: 'Rankings' },
       { id: 'statistics', label: 'Statistics' },
+      { id: 'subjects', label: 'Subjects' },
       { id: 'activity', label: 'Activity Logs' }
     ]
     : [
