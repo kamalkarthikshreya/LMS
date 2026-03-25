@@ -12,11 +12,6 @@ const enrollSubject = async (req, res) => {
         const subject = await Subject.findByPk(subjectId);
         if (!subject) return res.status(404).json({ message: 'Subject not found' });
 
-        // Check enrollment limit (max 3)
-        const currentEnrollments = await Enrollment.count({ where: { studentId } });
-        if (currentEnrollments >= 3) {
-            return res.status(400).json({ message: 'Maximum enrollment limit (3) reached' });
-        }
 
         // Check if already enrolled
         const existingEnrollment = await Enrollment.findOne({ where: { studentId, subjectId } });

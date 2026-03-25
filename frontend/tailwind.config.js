@@ -9,6 +9,7 @@ export default {
         extend: {
             fontFamily: {
                 sans: ['Inter', 'sans-serif'],
+                heading: ['Manrope', 'Inter', 'sans-serif'],
             },
             colors: {
                 primary: {
@@ -27,8 +28,11 @@ export default {
                     50: '#f8fafc',
                     100: '#f1f5f9',
                     200: '#e2e8f0',
+                    700: '#334155',
                     800: '#1e293b',
-                    900: '#0f172a',
+                    850: '#151b28',
+                    900: '#0b1326',
+                    950: '#070b14',
                 }
             },
             boxShadow: {

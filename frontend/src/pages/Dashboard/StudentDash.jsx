@@ -76,67 +76,80 @@ const StudentDash = ({ currentView = 'courses' }) => {
 
         return (
             <div className="space-y-8 animate-fade-in-up">
-                {/* Pinterest Hero Banner */}
-                <div className="relative h-40 lg:h-52 rounded-2xl lg:rounded-[2rem] overflow-hidden group">
-                    <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1400&q=80" alt="Studying" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/80 via-indigo-900/40 to-transparent flex items-center px-6 lg:px-12">
-                        <div>
-                            <p className="text-indigo-300 text-[10px] lg:text-xs font-black uppercase tracking-widest mb-1 lg:mb-2">Student ID: {user?.userId}</p>
-                            <h1 className="text-2xl lg:text-4xl font-black text-white leading-tight">Welcome back! 👋</h1>
-                            <p className="text-indigo-200 text-sm lg:text-base font-medium mt-1 lg:mt-2">You're enrolled in {enrollments.length} course{enrollments.length !== 1 ? 's' : ''}.</p>
+                {/* Scholar Hero Banner */}
+                <div className="relative h-48 lg:h-60 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-indigo-500/10 transition-colors duration-300">
+                    <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1400&q=80" alt="Studying" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-80 dark:opacity-100" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-white via-white/50 to-transparent dark:from-surface-950/90 dark:via-surface-950/40 dark:to-transparent flex items-center px-8 lg:px-16 transition-colors duration-300">
+                        <div className="max-w-2xl">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-4 backdrop-blur-md">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse"></span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">Scholar ID: {user?.userId || '001'}</span>
+                            </div>
+                            <h1 className="text-3xl lg:text-5xl font-black text-slate-900 dark:text-white leading-tight mb-3">Welcome back Master! 👋</h1>
+                            <p className="text-slate-600 dark:text-slate-400 text-sm lg:text-lg font-bold">You're currently mastering {enrollments.length} professional course{enrollments.length !== 1 ? 's' : ''}.</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Stat Pills Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Stat Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[
-                        { label: 'Enrolled', value: enrollments.length, gradient: 'from-violet-500 to-indigo-600', emoji: '📚' },
-                        { label: 'Quizzes Taken', value: results.length, gradient: 'from-emerald-400 to-teal-600', emoji: '🧠' },
-                        { label: 'Avg Quiz Score', value: results.length > 0 ? `${(results.reduce((a, r) => a + r.percentage, 0) / results.length).toFixed(1)}%` : '—', gradient: 'from-amber-400 to-orange-500', emoji: '🏆' },
+                        { label: 'Enrolled', value: enrollments.length, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-slate-200 dark:border-indigo-500/20', emoji: '📚' },
+                        { label: 'Assessments', value: results.length, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-slate-200 dark:border-emerald-500/20', emoji: '🧠' },
+                        { label: 'Avg Proficiency', value: results.length > 0 ? `${(results.reduce((a, r) => a + r.percentage, 0) / results.length).toFixed(1)}%` : '—', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-slate-200 dark:border-amber-500/20', emoji: '🏆' },
                     ].map((s, i) => (
-                        <div key={i} className={`bg-gradient-to-br ${s.gradient} p-5 lg:p-6 rounded-3xl text-white hover:-translate-y-1 transition-all duration-300 shadow-lg`}>
-                            <div className="text-2xl lg:text-3xl mb-2">{s.emoji}</div>
-                            <p className="text-2xl lg:text-3xl font-black">{s.value}</p>
-                            <p className="text-xs lg:text-sm text-white/75 font-semibold mt-1">{s.label}</p>
+                        <div key={i} className={`bg-white dark:bg-surface-850 p-8 rounded-[2rem] border ${s.border} hover:bg-slate-50 dark:hover:bg-surface-800 transition-all duration-500 shadow-xl group`}>
+                            <div className={`w-14 h-14 rounded-2xl ${s.bg} flex items-center justify-center text-2xl mb-6 shadow-inner`}>{s.emoji}</div>
+                            <p className={`text-4xl font-black text-slate-900 dark:text-white mb-1 tracking-tighter`}>{s.value}</p>
+                            <p className="text-xs font-black uppercase tracking-widest text-slate-500">{s.label}</p>
                         </div>
                     ))}
                 </div>
 
-                {/* Charts Row */}
+                {/* Analytics Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">Course Progress</h3>
+                    <div className="bg-white dark:bg-surface-850 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-2xl p-8 transition-colors duration-300">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-8 flex items-center gap-2">
+                            <TrendingUp size={14} className="text-indigo-600 dark:text-indigo-400" /> Mastery Progress
+                        </h3>
                         {progressData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={240}>
-                                <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="90%" data={progressData} startAngle={90} endAngle={-270}>
-                                    <RadialBar dataKey="progress" cornerRadius={8} background={{ fill: '#f8fafc' }}>
+                            <ResponsiveContainer width="100%" height={280}>
+                                <RadialBarChart cx="50%" cy="50%" innerRadius="25%" outerRadius="100%" data={progressData} startAngle={90} endAngle={-270}>
+                                    <RadialBar dataKey="progress" cornerRadius={12} background={{ fill: 'rgba(255,255,255,0.03)' }}>
                                         {progressData.map((entry, index) => <Cell key={index} fill={entry.fill} />)}
                                     </RadialBar>
-                                    <Legend iconSize={10} iconType="circle" />
-                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontWeight: 700 }} />
+                                    <Legend iconSize={12} iconType="circle" wrapperStyle={{ paddingTop: '20px', fontWeight: 900, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }} />
+                                    <Tooltip contentStyle={{ background: '#171923', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', fontWeight: 900 }} />
                                 </RadialBarChart>
                             </ResponsiveContainer>
                         ) : (
-                            <div className="h-60 flex items-center justify-center text-slate-400 text-sm">Enroll in courses to see progress</div>
+                            <div className="h-60 flex flex-col items-center justify-center text-slate-500 gap-4">
+                                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center"><BookOpen size={24} /></div>
+                                <p className="text-sm font-bold uppercase tracking-widest">Enroll to visualize metrics</p>
+                            </div>
                         )}
                     </div>
-                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">Quiz Performance</h3>
+                    <div className="bg-white dark:bg-surface-850 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-2xl p-8 transition-colors duration-300">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-8 flex items-center gap-2">
+                            <Award size={14} className="text-emerald-600 dark:text-emerald-400" /> Assessment Proficiency
+                        </h3>
                         {quizBarData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={240}>
+                            <ResponsiveContainer width="100%" height={280}>
                                 <BarChart data={quizBarData}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                    <XAxis dataKey="name" tick={{ fontSize: 12, fontWeight: 700, fill: '#94a3b8' }} />
-                                    <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }} />
-                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontWeight: 700 }} />
-                                    <Bar dataKey="score" name="Score %" radius={[8, 8, 0, 0]}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#64748b', textTransform: 'uppercase' }} />
+                                    <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} />
+                                    <Tooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} contentStyle={{ background: '#171923', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', fontWeight: 900 }} />
+                                    <Bar dataKey="score" name="Score %" radius={[6, 6, 0, 0]} barSize={40}>
                                         {quizBarData.map((_, i) => <Cell key={i} fill={['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][i % 5]} />)}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (
-                            <div className="h-60 flex items-center justify-center text-slate-400 text-sm">No quiz results yet.</div>
+                            <div className="h-60 flex flex-col items-center justify-center text-slate-500 gap-4">
+                                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center"><TrendingUp size={24} /></div>
+                                <p className="text-sm font-bold uppercase tracking-widest">No evaluation history</p>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -145,59 +158,61 @@ const StudentDash = ({ currentView = 'courses' }) => {
     };
 
     const renderCourses = () => (
-        <div className="space-y-8 animate-fade-in-up">
-            {/* Current Enrollments */}
+        <div className="space-y-10 animate-fade-in-up">
             <div>
+                <h2 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-6 flex items-center gap-3">
+                    <span className="w-8 h-[2px] bg-indigo-500/30"></span> Continuing Education
+                </h2>
                 {enrollments.length === 0 ? (
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center border-dashed">
-                        <p className="text-slate-500">You are not enrolled in any subjects yet.</p>
+                    <div className="bg-white dark:bg-surface-850 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-white/5 p-16 text-center transition-colors duration-300">
+                        <BookOpen size={48} className="mx-auto text-slate-300 dark:text-slate-700 mb-4" />
+                        <p className="text-slate-500 dark:text-slate-400 font-bold max-w-sm mx-auto">Your curriculum is currently empty. Explore available courses to begin your journey.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {enrollments.map((enrollment, index) => {
-                            // Assigning custom colors matching the user's design based on index
                             const colors = [
-                                { border: 'border-red-400', bg: 'bg-red-400', btn: 'bg-red-400 hover:bg-red-500' },
-                                { border: 'border-emerald-400', bg: 'bg-emerald-400', btn: 'bg-emerald-400 hover:bg-emerald-500' },
-                                { border: 'border-indigo-500', bg: 'bg-indigo-500', btn: 'bg-indigo-500 hover:bg-indigo-600' },
-                                { border: 'border-yellow-400', bg: 'bg-yellow-400', btn: 'bg-yellow-400 hover:bg-yellow-500' },
+                                { border: 'border-red-400/20', bg: 'bg-red-400', accent: 'text-red-400' },
+                                { border: 'border-emerald-400/20', bg: 'bg-emerald-400', accent: 'text-emerald-400' },
+                                { border: 'border-indigo-500/20', bg: 'bg-indigo-500', accent: 'text-indigo-400' },
                             ];
                             const theme = colors[index % colors.length];
 
                             return (
-                                <div key={enrollment._id} className="group relative rounded-[2rem] overflow-hidden shadow-lg h-[400px] flex flex-col justify-end transition-all duration-500 hover:shadow-2xl hover:-translate-y-2">
-                                    <div className="absolute inset-0 w-full h-full bg-slate-200">
+                                <div key={enrollment._id} className={`group relative rounded-[2.5rem] overflow-hidden bg-white dark:bg-surface-850 border ${theme.border} h-[440px] flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-black/50 hover:-translate-y-2`}>
+                                    <div className="h-52 w-full relative overflow-hidden">
                                         <img
-                                            src={enrollment.subjectId.thumbnail || 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
+                                            src={enrollment.subjectId.thumbnail || 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=800&q=80'}
                                             alt={enrollment.subjectId.title}
                                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                         />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-surface-850 via-transparent to-transparent"></div>
                                     </div>
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
 
-                                    <div className="relative z-10 p-8 flex flex-col h-full justify-end">
-                                        <div className={`w-12 h-1 ${theme.bg} rounded-full mb-4`}></div>
-                                        <h3 className="font-black text-2xl text-white mb-2 leading-tight">{enrollment.subjectId.title}</h3>
+                                    <div className="p-8 pt-2 flex flex-col flex-1">
+                                        <h3 className="font-black text-xl text-slate-900 dark:text-white mb-4 line-clamp-2 leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{enrollment.subjectId.title}</h3>
 
-                                        <div className="mt-4 mb-6">
-                                            <div className="flex justify-between items-end mb-2">
-                                                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Progress</span>
-                                                <span className="text-sm font-bold text-white">{enrollment.percentageCompleted}%</span>
+                                        <div className="mt-auto space-y-5">
+                                            <div>
+                                                <div className="flex justify-between items-end mb-2">
+                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Mastery Level</span>
+                                                    <span className={`text-xs font-black ${theme.accent}`}>{enrollment.percentageCompleted}%</span>
+                                                </div>
+                                                <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden backdrop-blur-sm border border-white/5">
+                                                    <div
+                                                        className={`${theme.bg} h-full rounded-full transition-all duration-1000 ease-out`}
+                                                        style={{ width: `${enrollment.percentageCompleted}%` }}
+                                                    ></div>
+                                                </div>
                                             </div>
-                                            <div className="w-full bg-white/20 rounded-full h-1.5 overflow-hidden backdrop-blur-sm">
-                                                <div
-                                                    className={`${theme.bg} h-full rounded-full transition-all duration-1000 ease-out`}
-                                                    style={{ width: `${enrollment.percentageCompleted}%` }}
-                                                ></div>
-                                            </div>
+
+                                            <button
+                                                onClick={() => navigate(`/reader/${enrollment.subjectId._id}`)}
+                                                className="w-full bg-slate-100 dark:bg-white/5 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-slate-900 dark:text-white font-black text-xs uppercase tracking-widest px-6 py-4 rounded-2xl transition-all duration-300 border border-slate-200 dark:border-white/10 hover:border-indigo-500 hover:text-white hover:shadow-lg hover:shadow-indigo-600/20 flex justify-center items-center gap-2"
+                                            >
+                                                Resume Session <ChevronRight size={14} />
+                                            </button>
                                         </div>
-
-                                        <button
-                                            onClick={() => navigate(`/reader/${enrollment.subjectId._id}`)}
-                                            className="w-full bg-white/10 hover:bg-white text-white hover:text-slate-900 border border-white/20 backdrop-blur-md font-bold text-sm px-6 py-3.5 rounded-xl transition-all duration-300 flex justify-center items-center gap-2"
-                                        >
-                                            Continue Learning
-                                        </button>
                                     </div>
                                 </div>
                             );
@@ -206,30 +221,31 @@ const StudentDash = ({ currentView = 'courses' }) => {
                 )}
             </div>
 
-            {/* Available Subjects */}
             {availableSubjects.length > 0 && (
-                <div className="pt-8 mt-8 border-t border-slate-200">
-                    <h2 className="text-xl font-bold text-slate-800 mb-6">Available to Enroll</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="pt-12 border-t border-white/5">
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-8 flex items-center gap-3">
+                        <span className="w-8 h-[2px] bg-emerald-500/30"></span> Global Catalog
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {availableSubjects.map(subject => (
-                            <div key={subject._id} className="group relative rounded-[2rem] overflow-hidden shadow-lg h-[350px] flex flex-col justify-end transition-all duration-500 hover:shadow-2xl hover:-translate-y-2">
-                                <div className="absolute inset-0 w-full h-full bg-slate-200">
+                            <div key={subject._id} className="group relative rounded-[2.5rem] overflow-hidden bg-white dark:bg-surface-900 border border-slate-100 dark:border-white/5 h-[400px] flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-black/50 hover:-translate-y-2">
+                                <div className="h-48 relative">
                                     <img
-                                        src={subject.thumbnail || 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
+                                        src={subject.thumbnail || 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=800&q=80'}
                                         alt={subject.title}
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.15]"
+                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100"
                                     />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-surface-900 via-white/20 dark:via-surface-900/40 to-transparent transition-colors duration-300"></div>
                                 </div>
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
 
-                                <div className="relative z-10 p-8 flex flex-col h-full justify-end">
-                                    <h3 className="font-extrabold text-xl text-white mb-2 line-clamp-2 leading-snug">{subject.title}</h3>
-                                    <p className="text-sm text-slate-300 mb-6 line-clamp-2 font-medium bg-black/20 p-2 rounded-lg backdrop-blur-sm border border-white/10">{subject.description}</p>
+                                <div className="p-8 pt-0 flex flex-col flex-1 relative z-10">
+                                    <h3 className="font-black text-xl text-slate-900 dark:text-white mb-2 line-clamp-1 leading-snug">{subject.title}</h3>
+                                    <p className="text-xs font-bold text-slate-500 mb-6 line-clamp-2 leading-relaxed">{subject.description}</p>
                                     <button
                                         onClick={() => handleEnroll(subject._id)}
-                                        className="w-full bg-primary-600 hover:bg-primary-500 shadow-xl shadow-primary-600/30 text-white font-bold text-sm px-6 py-3 rounded-xl transition-all duration-300"
+                                        className="mt-auto w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl transition-all duration-300 shadow-xl shadow-indigo-600/20"
                                     >
-                                        Enroll Now
+                                        Enroll in Program
                                     </button>
                                 </div>
                             </div>
@@ -241,62 +257,67 @@ const StudentDash = ({ currentView = 'courses' }) => {
     );
 
     const renderTests = () => (
-        <div className="space-y-8 animate-fade-in-up">
-            {/* Hero */}
-            <div className="relative h-48 rounded-[2rem] overflow-hidden">
+        <div className="space-y-10 animate-fade-in-up">
+            <div className="relative h-56 rounded-[2.5rem] overflow-hidden shadow-2xl transition-colors duration-300">
                 <img src="https://images.unsplash.com/photo-1509228468518-180dd4864904?w=1200&q=80" alt="Assessments" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/85 via-slate-900/60 to-transparent flex items-center px-10">
+                <div className="absolute inset-0 bg-gradient-to-r from-white via-white/50 to-transparent dark:from-surface-950/90 dark:via-surface-950/40 dark:to-transparent flex items-center px-10 lg:px-16 transition-colors duration-300">
                     <div>
-                        <p className="text-indigo-300 text-xs font-black uppercase tracking-widest mb-2">Assessment Hall</p>
-                        <h1 className="text-4xl font-black text-white">Your Quizzes</h1>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-4 backdrop-blur-md">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-300">Validation Center</span>
+                        </div>
+                        <h1 className="text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tighter">Performance Assessments</h1>
+                        <p className="text-slate-600 dark:text-slate-400 font-bold mt-2">Validate your expertise across {enrollments.length} enrolled subjects.</p>
                     </div>
                 </div>
             </div>
 
             {enrollments.length === 0 ? (
-                <div className="bg-white rounded-3xl p-16 text-center shadow-sm border border-slate-100">
-                    <p className="text-slate-500">Enroll in courses to view your assessments.</p>
+                <div className="bg-surface-850 rounded-[2.5rem] p-20 text-center border-2 border-dashed border-white/5">
+                    <Award size={60} className="mx-auto text-slate-700 mb-6" />
+                    <p className="text-slate-400 font-bold text-lg">Active enrollments required to unlock assessments.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {enrollments.map((enrollment, index) => {
-                        const images = [
-                            'https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=800&q=80',
-                            'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=800&q=80',
-                            'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=800&q=80',
-                        ];
                         const accents = ['from-red-500 to-rose-600', 'from-emerald-500 to-teal-600', 'from-indigo-500 to-violet-600'];
                         const quizList = subjectQuizzes[enrollment.subjectId._id] || [];
 
                         return (
-                            <div key={enrollment._id} className="group relative rounded-[2rem] overflow-hidden shadow-lg h-[360px] flex flex-col justify-end transition-all duration-500 hover:shadow-2xl hover:-translate-y-2">
-                                <div className="absolute inset-0">
-                                    <img src={enrollment.subjectId.thumbnail || images[index % images.length]} alt={enrollment.subjectId.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                            <div key={enrollment._id} className="group relative rounded-[2.5rem] overflow-hidden bg-white dark:bg-surface-850 border border-slate-100 dark:border-white/5 h-[400px] flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-black/30 hover:-translate-y-2 shadow-xl shadow-black/10 dark:shadow-black/30">
+                                <div className="h-48 relative">
+                                    <img 
+                                        src={enrollment.subjectId.thumbnail || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=800&q=80'} 
+                                        alt={enrollment.subjectId.title} 
+                                        className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" 
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-surface-900 via-white/20 dark:via-surface-900/40 to-transparent transition-colors duration-300"></div>
                                 </div>
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent"></div>
 
-                                <div className="relative z-10 p-7 flex flex-col gap-3">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="px-3 py-1 bg-white/20 backdrop-blur-md text-white text-xs font-bold rounded-full border border-white/20">
-                                            {quizList.length} Quiz{quizList.length !== 1 ? 'zes' : ''}
+                                <div className="p-8 pt-4 flex flex-col flex-1 relative z-10">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className="px-3 py-1 bg-slate-50 dark:bg-white/5 backdrop-blur-md text-[10px] text-slate-500 dark:text-slate-400 font-black rounded-full border border-slate-200 dark:border-white/10 uppercase tracking-widest">
+                                            {quizList.length} Active Assessment{quizList.length !== 1 ? 's' : ''}
                                         </span>
                                     </div>
-                                    <h3 className="font-black text-xl text-white leading-tight">{enrollment.subjectId.title}</h3>
+                                    <h3 className="font-black text-xl text-slate-900 dark:text-white leading-tight mb-4 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors uppercase line-clamp-1">{enrollment.subjectId.title}</h3>
 
                                     {quizList.length > 0 ? (
-                                        <div className="space-y-2">
+                                        <div className="space-y-3 mt-auto">
                                             {quizList.map((quiz, qIdx) => (
                                                 <button
                                                     key={quiz._id}
                                                     onClick={() => navigate(`/quiz/${enrollment.subjectId._id}`)}
-                                                    className={`w-full py-3 px-4 rounded-xl bg-gradient-to-r ${accents[index % accents.length]} text-white text-sm font-black shadow-xl transition-all hover:scale-[1.02]`}
+                                                    className={`w-full py-4 px-6 rounded-2xl bg-gradient-to-r ${accents[index % accents.length]} text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-black/20 transition-all hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2`}
                                                 >
-                                                    🎯 Take Quiz {qIdx + 1}
+                                                    🎯 Start Evaluation {qIdx + 1}
                                                 </button>
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-sm text-slate-400 italic">No quizzes yet from instructor.</p>
+                                        <div className="mt-auto p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+                                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-loose">Assessment pipeline pending deployment.</p>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -309,28 +330,32 @@ const StudentDash = ({ currentView = 'courses' }) => {
 
     const renderProgress = () => {
         if (enrollments.length === 0) return (
-            <div className="space-y-8 animate-fade-in-up flex flex-col items-center justify-center py-16">
-                <div className="w-24 h-24 rounded-full bg-indigo-50 flex items-center justify-center">
-                    <TrendingUp size={48} className="text-indigo-400" />
+            <div className="space-y-8 animate-fade-in-up flex flex-col items-center justify-center py-24 bg-white dark:bg-surface-850 rounded-[3rem] border border-slate-100 dark:border-white/5 shadow-2xl transition-colors duration-300">
+                <div className="w-32 h-32 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center mb-8">
+                    <TrendingUp size={60} className="text-slate-300 dark:text-slate-700" />
                 </div>
-                <h2 className="text-2xl font-black text-slate-800">Your Analytics</h2>
-                <p className="text-slate-500 max-w-md text-center">Enroll in courses and take quizzes to see your ranking score and analytics.</p>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Advanced Analytics</h2>
+                <p className="text-slate-500 font-bold text-center max-w-sm px-6">Complete curriculum components and validation assessments to unlock global efficiency data.</p>
             </div>
         );
 
         return (
-            <div className="space-y-8 animate-fade-in-up">
-                <div className="relative h-44 rounded-[2rem] overflow-hidden">
+            <div className="space-y-10 animate-fade-in-up">
+                <div className="relative h-56 rounded-[2.5rem] overflow-hidden shadow-2xl transition-colors duration-300">
                     <img src="https://images.unsplash.com/photo-1543286386-713bdd548da4?w=1200&q=80" alt="Analytics" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-900/85 via-slate-900/60 to-transparent flex items-center px-10">
+                    <div className="absolute inset-0 bg-gradient-to-r from-white via-white/50 to-transparent dark:from-surface-950/90 dark:via-surface-950/40 dark:to-transparent flex items-center px-10 lg:px-16 transition-colors duration-300">
                         <div>
-                            <p className="text-violet-300 text-xs font-black uppercase tracking-widest mb-2">Performance</p>
-                            <h1 className="text-4xl font-black text-white">Your Analytics</h1>
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-4 backdrop-blur-md">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse"></span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">Global Mastery Engine</span>
+                            </div>
+                            <h1 className="text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tighter">Your Analytics</h1>
+                            <p className="text-slate-600 dark:text-slate-400 font-bold mt-2">Deep-dive performance breakdown across your learning path.</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {enrollments.map((enrollment, i) => {
                         const subjectQuizIds = subjectQuizzes[enrollment.subjectId._id]?.map(q => q._id) || [];
                         const userSubjectResults = results.filter(r => subjectQuizIds.includes(r.quizId._id) || subjectQuizIds.includes(r.quizId));
@@ -339,36 +364,43 @@ const StudentDash = ({ currentView = 'courses' }) => {
                             : 0;
                         const completion = enrollment.percentageCompleted || 0;
                         const rankingScore = (averageQuizScore * 0.7) + (completion * 0.3);
-                        const gradients = ['from-violet-500 to-indigo-600', 'from-emerald-500 to-teal-600', 'from-amber-500 to-orange-600'];
+                        const gradients = ['from-indigo-500 to-indigo-700', 'from-emerald-500 to-emerald-700', 'from-amber-500 to-orange-700'];
 
                         return (
-                            <div key={enrollment._id} className={`bg-gradient-to-br ${gradients[i % gradients.length]} rounded-3xl p-8 text-white shadow-xl hover:-translate-y-2 transition-all duration-300`}>
-                                <p className="text-xs font-black uppercase tracking-widest text-white/60 mb-4">{enrollment.subjectId.title}</p>
+                            <div key={enrollment._id} className={`bg-gradient-to-br ${gradients[i % gradients.length]} rounded-[2.5rem] p-10 text-white shadow-2xl hover:-translate-y-2 transition-all duration-500 border border-white/10 group shadow-lg shadow-black/20`}>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-6 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-white/30"></span> {enrollment.subjectId.title}
+                                </p>
 
-                                <div className="space-y-5 mb-6">
+                                <div className="space-y-8 mb-10">
                                     <div>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-sm font-semibold text-white/70">Quiz Score (70%)</span>
-                                            <span className="font-black text-white">{averageQuizScore.toFixed(1)}%</span>
+                                        <div className="flex justify-between items-center mb-3">
+                                            <span className="text-xs font-black uppercase tracking-widest text-white/60">Quiz Metrics (70%)</span>
+                                            <span className="text-lg font-black text-white">{averageQuizScore.toFixed(1)}%</span>
                                         </div>
-                                        <div className="w-full bg-white/20 rounded-full h-2">
-                                            <div className="bg-white h-2 rounded-full transition-all duration-1000" style={{ width: `${averageQuizScore}%` }}></div>
+                                        <div className="w-full bg-black/20 rounded-full h-3 border border-white/10 overflow-hidden backdrop-blur-sm">
+                                            <div className="bg-white h-full rounded-full transition-all duration-1500 ease-out shadow-[0_0_15px_rgba(255,255,255,0.4)]" style={{ width: `${averageQuizScore}%` }}></div>
                                         </div>
                                     </div>
                                     <div>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-sm font-semibold text-white/70">Completion (30%)</span>
-                                            <span className="font-black text-white">{completion.toFixed(1)}%</span>
+                                        <div className="flex justify-between items-center mb-3">
+                                            <span className="text-xs font-black uppercase tracking-widest text-white/60">Curriculum (30%)</span>
+                                            <span className="text-lg font-black text-white">{completion.toFixed(1)}%</span>
                                         </div>
-                                        <div className="w-full bg-white/20 rounded-full h-2">
-                                            <div className="bg-white h-2 rounded-full transition-all duration-1000" style={{ width: `${completion}%` }}></div>
+                                        <div className="w-full bg-black/20 rounded-full h-3 border border-white/10 overflow-hidden backdrop-blur-sm">
+                                            <div className="bg-white h-full rounded-full transition-all duration-1500 ease-out shadow-[0_0_15px_rgba(255,255,255,0.4)]" style={{ width: `${completion}%` }}></div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="pt-5 border-t border-white/20 flex items-center justify-between">
-                                    <span className="text-sm font-bold text-white/80">Final Ranking Score</span>
-                                    <span className="text-3xl font-black text-white">{rankingScore.toFixed(1)}</span>
+                                <div className="pt-8 border-t border-white/10 flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-white/50">Final Efficiency Index</span>
+                                        <span className="text-4xl font-black text-white tracking-tighter">{rankingScore.toFixed(1)}</span>
+                                    </div>
+                                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/10 group-hover:rotate-12 transition-transform duration-500">
+                                        <TrendingUp size={24} />
+                                    </div>
                                 </div>
                             </div>
                         );

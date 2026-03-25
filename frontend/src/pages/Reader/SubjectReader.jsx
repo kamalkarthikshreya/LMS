@@ -142,12 +142,12 @@ const SubjectReader = () => {
     const hasContent = subject.units && subject.units.length > 0;
 
     const SidebarContent = () => (
-        <div className="flex flex-col h-full">
-            <div className="p-5 border-b border-slate-100 flex items-center gap-3 mb-4 sticky top-0 bg-white/90 backdrop-blur-md z-20">
-                <button onClick={() => navigate('/dashboard')} className="text-slate-500 hover:text-primary-600 transition-colors">
-                    <ArrowLeft size={20} />
+        <div className="flex flex-col h-full bg-surface-900">
+            <div className="p-6 border-b border-white/5 flex items-center gap-3 mb-4 sticky top-0 bg-surface-900/95 backdrop-blur-md z-20">
+                <button onClick={() => navigate('/dashboard')} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                    <ArrowLeft size={18} />
                 </button>
-                <h2 className="font-bold text-slate-900 truncate" title={subject.title}>
+                <h2 className="font-black text-white truncate text-sm tracking-tight" title={subject.title}>
                     {subject.title}
                 </h2>
                 <button onClick={() => setShowMobileNav(false)} className="md:hidden ml-auto text-slate-400">
@@ -179,9 +179,9 @@ const SubjectReader = () => {
                                                     saveProgress(uIdx, cIdx, sIdx);
                                                     setShowMobileNav(false);
                                                 }}
-                                                className={`w-full text-left text-sm py-2 px-3 rounded-lg transition-all duration-200 ${isActive
-                                                    ? 'bg-gradient-to-r from-primary-50 to-white text-primary-700 font-bold border-l-4 border-primary-500 shadow-sm'
-                                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                                                className={`w-full text-left text-sm py-3 px-4 rounded-xl transition-all duration-300 ${isActive
+                                                    ? 'bg-indigo-600 text-white font-black shadow-lg shadow-indigo-600/20 translate-x-1'
+                                                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
                                                     }`}
                                             >
                                                 {section.sectionNumber || sIdx + 1}. {section.title}
@@ -200,12 +200,13 @@ const SubjectReader = () => {
     );
 
     return (
-        <div className="flex h-[calc(100vh-4rem)] bg-slate-50 relative overflow-hidden animate-fade-in">
+        <div className="flex h-[calc(100vh-4rem)] bg-surface-950 relative overflow-hidden animate-fade-in font-sans">
             {/* Background elements */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-100/40 rounded-full blur-3xl pointer-events-none mix-blend-multiply"></div>
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
 
             {/* Sidebar Navigation - Desktop */}
-            <div className="w-64 bg-white/80 backdrop-blur-xl border-r border-slate-200/50 overflow-hidden hidden md:block z-10 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]">
+            <div className="w-72 bg-surface-900 border-r border-white/5 overflow-hidden hidden md:block z-10 shadow-2xl">
                 <SidebarContent />
             </div>
 
@@ -234,26 +235,26 @@ const SubjectReader = () => {
                                         <Menu size={24} />
                                     </button>
 
-                                    <span className="inline-flex items-center px-4 py-1.5 rounded-full text-[10px] lg:text-xs font-bold uppercase tracking-widest bg-slate-900 text-white shadow-xl shadow-slate-900/20 mb-4 lg:mb-6">
+                                    <span className="inline-flex items-center px-4 py-1.5 rounded-full text-[10px] lg:text-xs font-black uppercase tracking-widest bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 mb-4 lg:mb-6">
                                         Unit {currentUnit?.unitNumber || currentUnitIdx + 1} • Chapter {currentChapter?.chapterNumber || currentChapterIdx + 1}
                                     </span>
-                                    <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-slate-900 leading-tight tracking-tighter drop-shadow-sm">
+                                    <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white leading-tight tracking-tighter drop-shadow-2xl">
                                         {currentSection?.title || 'Untitled Section'}
                                     </h1>
-                                    <div className="w-16 lg:w-24 h-1 lg:h-1.5 bg-gradient-to-r from-primary-500 to-indigo-500 mx-auto mt-6 lg:mt-8 rounded-full"></div>
+                                    <div className="w-16 lg:w-24 h-1 lg:h-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto mt-6 lg:mt-8 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]"></div>
                                 </div>
 
-                                <div className="prose prose-slate prose-xl max-w-none text-slate-700 leading-[2.2] font-medium">
+                                <div className="prose prose-invert prose-xl max-w-none text-slate-300 leading-[2.2] font-medium selection:bg-indigo-500/30">
                                     {currentSection?.videoUrl && (
                                         <div className="mb-12 mt-8 animate-fade-in">
-                                            <div className="rounded-2xl overflow-hidden shadow-xl border border-slate-200/60 bg-white">
-                                                <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3 bg-white">
+                                            <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/5 bg-surface-900">
+                                                <div className="px-6 py-4 border-b border-white/5 flex items-center gap-3 bg-surface-850">
                                                     <div className="flex gap-1.5">
-                                                        <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                                                        <div className="w-3 h-3 rounded-full bg-amber-400"></div>
-                                                        <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
+                                                        <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
+                                                        <div className="w-3 h-3 rounded-full bg-amber-500/50"></div>
+                                                        <div className="w-3 h-3 rounded-full bg-emerald-500/50"></div>
                                                     </div>
-                                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest ml-2">Video Lesson</span>
+                                                    <span className="text-xs font-black text-slate-500 uppercase tracking-widest ml-3">Cinematic Lesson</span>
                                                 </div>
                                                 {/* Padding-bottom aspect ratio — no z-index stacking, iframe fully interactive */}
                                                 <div className="bg-slate-900" style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
@@ -330,15 +331,15 @@ const SubjectReader = () => {
                                     <button
                                         onClick={() => navigateContent('prev')}
                                         disabled={currentUnitIdx === 0 && currentChapterIdx === 0 && currentSectionIdx === 0}
-                                        className="w-full sm:w-auto btn-secondary gap-2 px-6 py-3 text-slate-600 hover:text-primary-700 shadow-sm"
+                                        className="w-full sm:w-auto bg-white/5 hover:bg-white/10 text-slate-300 font-bold px-8 py-4 rounded-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-30 border border-white/10"
                                     >
                                         <ChevronLeft size={20} /> Previous
                                     </button>
                                     <button
                                         onClick={() => navigateContent('next')}
-                                        className="w-full sm:w-auto btn-primary gap-2 px-8 py-3 rounded-xl shadow-lg shadow-primary-500/30"
+                                        className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-black px-10 py-4 rounded-2xl shadow-2xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-3"
                                     >
-                                        Next <ChevronRight size={20} />
+                                        Next Chapter <ChevronRight size={20} />
                                     </button>
                                 </div>
                             </div>

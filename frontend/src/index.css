@@ -9,7 +9,7 @@
   }
 
   body {
-    @apply font-sans antialiased bg-slate-50 text-slate-800 selection:bg-primary-500 selection:text-white dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300;
+    @apply font-sans antialiased bg-slate-50 text-slate-900 dark:bg-surface-950 dark:text-slate-200 selection:bg-indigo-500 selection:text-white transition-colors duration-300;
   }
 
   h1,
@@ -18,7 +18,7 @@
   h4,
   h5,
   h6 {
-    @apply text-slate-900 font-semibold tracking-tight dark:text-white transition-colors duration-300;
+    @apply text-slate-900 font-black tracking-tight dark:text-white transition-colors duration-300;
   }
 }
 

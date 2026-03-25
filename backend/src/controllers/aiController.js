@@ -103,18 +103,20 @@ const askContextualQuestion = async (req, res) => {
             return res.status(400).json({ message: 'Query is required' });
         }
 
-        // Use extractive QA (with Wikipedia fallback) when no OpenAI key is set
+        const cleanContext = (context || '')
+            .replace(/\[IMG\].*?(\n|$)/g, '')
+            .replace(/\[PDF\].*?(\n|$)/g, '')
+            .replace(/\[SPICE\].*?(\n|$)/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
         if (!process.env.OPENAI_API_KEY) {
             let contextualQuery = query;
             const currentKeywords = extractKeywords(query);
-            const queryLower = query.toLowerCase();
             
-            // Detect if user wants brief or detailed response
-            const wantsBrief = /\b(brief|briefly|short|shortly|summary|summarize|summarise|concise|concisely|quick|quickly|one.?line|tldr)\b/i.test(queryLower);
-            const wantsDetail = !wantsBrief && /\b(detail|detailed|elaborate|depth|expand|thorough|comprehensive|in.?depth)\b/i.test(queryLower);
+            const isShortFollowUp = currentKeywords.length <= 1 && history.length > 0;
             
-            // Fix conversation context loss for short follow-up questions (e.g., "explain briefly")
-            if (currentKeywords.length <= 1 && history.length > 0) {
+            if (isShortFollowUp) {
                 const userMsgs = history.filter(m => m.role === 'user');
                 if (userMsgs.length > 0) {
                     const lastMsg = userMsgs[userMsgs.length - 1].content;
@@ -122,52 +124,27 @@ const askContextualQuestion = async (req, res) => {
                 }
             }
             
-            let answer = await extractiveAnswer(context || '', contextualQuery);
+            let answer = await extractiveAnswer(cleanContext, contextualQuery);
             
-            // Post-process: if this is a follow-up request (explain, briefly, more detail, etc.), 
-            // provide a RICHER, LONGER answer from Wikipedia's full intro section
-            const isFollowUp = history.length > 0 && (
-                /\b(brief|briefly|explain|more|detail|elaborate|expand|depth|short|summary|comprehensive)\b/i.test(queryLower)
-            );
-            
-            if (isFollowUp && answer.includes('[General Knowledge')) {
-                // Extract the topic from the previous answer to search Wikipedia for richer content
+            if (isShortFollowUp && answer.includes('[General Knowledge')) {
                 const topicKeywords = extractKeywords(contextualQuery);
                 if (topicKeywords.length > 0) {
                     try {
-                        // Use Wikipedia's TextExtracts API to get full intro section (much longer than summary)
-                        const wikiRes = await fetch(
-                            `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(topicKeywords.join(' '))}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*&redirects=1`
-                        );
-                        if (wikiRes.ok) {
-                            const wikiData = await wikiRes.json();
-                            const pages = wikiData.query?.pages;
-                            if (pages) {
-                                const page = Object.values(pages)[0];
-                                if (page && page.extract && page.extract.length > 50) {
-                                    answer = `[${page.title} - Explained]: ${page.extract}`;
-                                }
-                            }
-                        }
-                        
-                        // If the direct title didn't work, search first then extract
-                        if (answer.includes('[General Knowledge')) {
-                            const searchRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(topicKeywords.join(' '))}&utf8=&format=json&origin=*`);
-                            if (searchRes.ok) {
-                                const searchData = await searchRes.json();
-                                if (searchData.query?.search?.length > 0) {
-                                    const bestTitle = searchData.query.search[0].title;
-                                    const extractRes = await fetch(
-                                        `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(bestTitle)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*&redirects=1`
-                                    );
-                                    if (extractRes.ok) {
-                                        const extractData = await extractRes.json();
-                                        const pages2 = extractData.query?.pages;
-                                        if (pages2) {
-                                            const page2 = Object.values(pages2)[0];
-                                            if (page2 && page2.extract && page2.extract.length > 50) {
-                                                answer = `[${page2.title} - Explained]: ${page2.extract}`;
-                                            }
+                        const searchRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(topicKeywords.join(' '))}&utf8=&format=json&origin=*`);
+                        if (searchRes.ok) {
+                            const searchData = await searchRes.json();
+                            if (searchData.query?.search?.length > 0) {
+                                const bestTitle = searchData.query.search[0].title;
+                                const extractRes = await fetch(
+                                    `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(bestTitle)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*&redirects=1`
+                                );
+                                if (extractRes.ok) {
+                                    const extractData = await extractRes.json();
+                                    const pages = extractData.query?.pages;
+                                    if (pages) {
+                                        const page = Object.values(pages)[0];
+                                        if (page?.extract?.length > 50) {
+                                            answer = `[${page.title} - Explained]: ${page.extract}`;
                                         }
                                     }
                                 }
@@ -180,16 +157,22 @@ const askContextualQuestion = async (req, res) => {
             return res.json({ answer });
         }
 
-        if (!context) {
-            return res.status(400).json({ message: 'Context is required' });
+        if (!cleanContext && (!history || history.length === 0)) {
+            return res.status(400).json({ message: 'No context provided for this query.' });
         }
 
-        const systemPrompt = `You are a helpful teaching assistant for a college course. 
-Using STRICTLY the context below from the course material, answer the student's question. 
-If the answer cannot be determined from the context alone, reply EXACTLY with: 'I cannot find the answer in the provided course material.' Do not invent answers or use outside knowledge.
+        const systemPrompt = `You are a helpful and knowledgeable teaching assistant for a college-level course. 
+Your goal is to help students understand the course material effectively.
+
+Primary Instructions:
+1. Use the provided "Course Context" to answer the student's question.
+2. If the answer is in the context, synthesize it clearly and concisely.
+3. If the context is missing specific details, use your general knowledge to provide a helpful, scientifically accurate explanation that complements the course topic.
+4. If you use outside knowledge, frame it as "In addition to the course material..." or "Broadly speaking...".
+5. Keep your tone encouraging, professional, and academic.
 
 Course Context:
-${context}
+${cleanContext}
 `;
 
         const chatHistory = history.map(m => ({

@@ -259,105 +259,117 @@ const SubjectEditor = () => {
     if (!subject) return <div className="p-8 text-center text-red-500">Subject not found.</div>;
 
     return (
-        <div className="max-w-5xl mx-auto p-6 space-y-8 pb-32">
+        <div className="max-w-7xl mx-auto p-6 space-y-8 pb-32">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between sticky top-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md z-10 py-4 gap-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between sticky top-0 bg-surface-950/90 backdrop-blur-md z-10 py-6 gap-4 border-b border-white/5">
                 <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
-                    <button onClick={() => navigate('/dashboard')} className="p-2 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors flex-shrink-0">
-                        <ArrowLeft size={20} className="sm:w-6 sm:h-6" />
+                    <button onClick={() => navigate('/dashboard')} className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all shadow-xl">
+                        <ArrowLeft size={22} />
                     </button>
                     <div className="min-w-0">
-                        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white truncate">Manage Subject</h1>
-                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 truncate">{subject.title}</p>
+                        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Curriculum Studio</h1>
+                        <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">{subject.title}</p>
                     </div>
                 </div>
                 {activeTab === 'curriculum' && (
-                    <button onClick={handleSave} disabled={saving} className="w-full sm:w-auto btn-primary gap-2 text-sm py-2.5">
-                        <Save size={18} /> {saving ? 'Saving...' : 'Save Changes'}
+                    <button onClick={handleSave} disabled={saving} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-3.5 rounded-2xl shadow-2xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2">
+                        <Save size={18} /> {saving ? 'Saving...' : 'Publish Changes'}
                     </button>
                 )}
             </div>
 
             {/* Tab Switcher */}
-            <div className="flex flex-col sm:flex-row gap-2 bg-white dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex flex-col sm:flex-row gap-2 bg-surface-900 p-2 rounded-[2rem] border border-white/5 shadow-2xl">
                 <button
                     onClick={() => setActiveTab('curriculum')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${activeTab === 'curriculum'
-                        ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25'
-                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                    className={`flex-1 flex items-center justify-center gap-3 py-3.5 px-6 rounded-2xl text-sm font-black transition-all duration-300 ${activeTab === 'curriculum'
+                        ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20'
+                        : 'text-slate-500 hover:text-white hover:bg-white/5'
                         }`}
                 >
-                    <BookOpen size={18} /> Curriculum ({subject.units?.length || 0})
+                    <BookOpen size={18} /> Curriculum Builder
                 </button>
                 <button
                     onClick={() => setActiveTab('quizzes')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${activeTab === 'quizzes'
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/25'
-                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                    className={`flex-1 flex items-center justify-center gap-3 py-3.5 px-6 rounded-2xl text-sm font-black transition-all duration-300 ${activeTab === 'quizzes'
+                        ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-500/20'
+                        : 'text-slate-500 hover:text-white hover:bg-white/5'
                         }`}
                 >
-                    <FileQuestion size={18} /> Quizzes ({quizzes.length})
+                    <FileQuestion size={18} /> Assessment Suite
                 </button>
             </div>
 
-            {/* ─── CURRICULUM TAB ──────────────────────── */}
+            {/* CURRICULUM TAB */}
             {activeTab === 'curriculum' && (
                 <div className="space-y-6">
                     {subject.units.map((unit, uIdx) => (
-                        <div key={uIdx} className="card p-6 border border-primary-200 dark:border-primary-900/50">
-                            <div className="flex items-center justify-between mb-4">
-                                <input type="text" value={unit.title}
-                                    onChange={(e) => { const u = [...subject.units]; u[uIdx].title = e.target.value; setSubject({ ...subject, units: u }); }}
-                                    className="text-xl font-bold text-primary-700 dark:text-primary-400 bg-transparent edit-focus-ring border-none focus:ring-0 w-full"
-                                    placeholder="Unit Title" />
+                        <div key={uIdx} className="bg-surface-900 p-8 rounded-[2rem] border border-indigo-500/20 shadow-2xl">
+                            <div className="flex items-center justify-between mb-8 group">
+                                <div className="flex items-center gap-4 flex-1">
+                                    <span className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-black">
+                                        {uIdx + 1}
+                                    </span>
+                                    <input type="text" value={unit.title}
+                                        onChange={(e) => { const u = [...subject.units]; u[uIdx].title = e.target.value; setSubject({ ...subject, units: u }); }}
+                                        className="text-2xl font-black text-white bg-transparent border-none focus:ring-0 w-full hover:bg-white/5 rounded-xl px-3 py-1 transition-all"
+                                        placeholder="Enter Unit Title" />
+                                </div>
                             </div>
-                            <div className="space-y-4 pl-4 border-l-2 border-slate-200 dark:border-slate-700 ml-2">
+                            <div className="space-y-6 pl-10 border-l-2 border-white/5 ml-5">
                                 {unit.chapters.map((chapter, cIdx) => (
-                                    <div key={cIdx} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
-                                        <input type="text" value={chapter.title}
-                                            onChange={(e) => { const u = [...subject.units]; u[uIdx].chapters[cIdx].title = e.target.value; setSubject({ ...subject, units: u }); }}
-                                            className="text-lg font-semibold text-slate-800 dark:text-slate-200 bg-transparent w-full mb-3"
-                                            placeholder="Chapter Title" />
-                                        <div className="space-y-3 pl-4">
+                                    <div key={cIdx} className="bg-surface-850/50 p-6 rounded-2xl border border-white/5">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Chapter {cIdx + 1}</span>
+                                            <input type="text" value={chapter.title}
+                                                onChange={(e) => { const u = [...subject.units]; u[uIdx].chapters[cIdx].title = e.target.value; setSubject({ ...subject, units: u }); }}
+                                                className="text-lg font-black text-slate-200 bg-transparent w-full hover:bg-white/5 rounded-lg px-2 py-1 transition-all"
+                                                placeholder="Chapter Title" />
+                                        </div>
+                                        <div className="space-y-4">
                                             {chapter.sections.map((section, sIdx) => (
-                                                <div key={sIdx} className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-                                                    <input type="text" value={section.title}
-                                                        onChange={(e) => updateSection(uIdx, cIdx, sIdx, 'title', e.target.value)}
-                                                        className="font-semibold text-slate-900 dark:text-slate-100 bg-transparent w-full mb-4 pt-1"
-                                                        placeholder="Section Title" />
-                                                    <div className="space-y-4">
+                                                <div key={sIdx} className="bg-surface-950 p-6 rounded-2xl border border-white/5 shadow-xl">
+                                                    <div className="flex items-center gap-3 mb-6">
+                                                        <span className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-[10px] font-black">{sIdx + 1}</span>
+                                                        <input type="text" value={section.title}
+                                                            onChange={(e) => updateSection(uIdx, cIdx, sIdx, 'title', e.target.value)}
+                                                            className="font-black text-white bg-transparent w-full hover:bg-white/5 rounded-lg px-2 py-1 transition-all"
+                                                            placeholder="Section Title" />
+                                                    </div>
+                                                    <div className="space-y-6">
                                                         <div>
-                                                            <label className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                                                                <Video size={16} /> Embed Video URL
+                                                            <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                                                                <Video size={14} /> Video Lesson Embed URL
                                                             </label>
                                                             <input type="text" value={section.videoUrl || ''}
                                                                 onChange={(e) => updateSection(uIdx, cIdx, sIdx, 'videoUrl', e.target.value)}
-                                                                className="input-field text-sm py-2" placeholder="https://www.youtube.com/embed/..." />
+                                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-300 placeholder-slate-600 focus:border-indigo-500/50 outline-none transition-all" 
+                                                                placeholder="https://www.youtube.com/embed/..." />
                                                         </div>
                                                         <div>
-                                                            <label className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">
-                                                                <FileText size={16} /> Text Content Paragraphs
+                                                            <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">
+                                                                <FileText size={14} /> Course Narrative & Content
                                                             </label>
-                                                            <div className="space-y-2">
+                                                            <div className="space-y-3">
                                                                 {section.paragraphs.map((para, pIdx) => (
-                                                                    <div key={pIdx} className="flex gap-2 items-start">
+                                                                    <div key={pIdx} className="flex gap-3 items-start group/para">
                                                                         <textarea value={para}
                                                                             onChange={(e) => updateParagraph(uIdx, cIdx, sIdx, pIdx, e.target.value)}
-                                                                            className="input-field text-sm py-2 resize-y min-h-[60px]" placeholder="Enter text..." />
+                                                                            className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-slate-300 placeholder-slate-600 focus:border-indigo-500/50 outline-none transition-all resize-none min-h-[80px]" 
+                                                                            placeholder="Type your content..." />
                                                                         <button onClick={() => removeParagraph(uIdx, cIdx, sIdx, pIdx)}
-                                                                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors mt-1">
+                                                                            className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover/para:opacity-100">
                                                                             <Trash2 size={16} />
                                                                         </button>
                                                                     </div>
                                                                 ))}
-                                                                <div className="flex items-center gap-4">
+                                                                <div className="flex items-center gap-6 pt-2">
                                                                     <button onClick={() => addParagraph(uIdx, cIdx, sIdx)}
-                                                                        className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium flex items-center gap-1">
-                                                                        <Plus size={14} /> Add Paragraph
+                                                                        className="text-xs font-black uppercase tracking-widest text-indigo-400 hover:text-indigo-300 flex items-center gap-2 transition-colors">
+                                                                        <Plus size={14} /> Add Block
                                                                     </button>
-
-                                                                    <label className="text-sm text-indigo-500 hover:text-indigo-600 font-medium flex items-center gap-1 cursor-pointer">
-                                                                        <Upload size={14} /> Upload PDF
+                                                                    <label className="text-xs font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-300 flex items-center gap-2 cursor-pointer transition-colors">
+                                                                        <Upload size={14} /> Attach PDF
                                                                         <input type="file" accept=".pdf" className="hidden"
                                                                             onChange={(e) => uploadPdf(uIdx, cIdx, sIdx, e.target.files[0])} />
                                                                     </label>
@@ -368,53 +380,50 @@ const SubjectEditor = () => {
                                                 </div>
                                             ))}
                                             <button onClick={() => addSection(uIdx, cIdx)}
-                                                className="btn-secondary text-sm py-2 px-4 shadow-none w-full border-dashed">
-                                                <Plus size={16} className="mr-2" /> Add Section
+                                                className="w-full py-4 border-2 border-dashed border-white/10 rounded-2xl text-slate-500 text-xs font-black uppercase tracking-widest hover:bg-white/5 hover:text-slate-300 transition-all">
+                                                <Plus size={16} className="inline mr-2" /> Add Section
                                             </button>
                                         </div>
                                     </div>
                                 ))}
                                 <button onClick={() => addChapter(uIdx)}
-                                    className="btn-secondary text-sm py-2 px-4 shadow-none border-dashed text-primary-600 border-primary-200 mt-2">
-                                    <Plus size={16} className="mr-2" /> Add Chapter
+                                    className="w-full py-4 border-2 border-dashed border-white/10 rounded-2xl text-indigo-400 text-xs font-black uppercase tracking-widest hover:bg-indigo-500/10 transition-all">
+                                    <Plus size={16} className="inline mr-2" /> Add Chapter
                                 </button>
                             </div>
                         </div>
                     ))}
                     <button onClick={addUnit}
-                        className="w-full py-4 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex items-center justify-center gap-2">
-                        <Plus size={20} /> Add New Unit
+                        className="w-full py-8 border-2 border-dashed border-white/10 rounded-[2rem] text-slate-500 text-sm font-black uppercase tracking-widest hover:bg-white/5 hover:text-slate-300 transition-all grid place-items-center gap-2">
+                        <Plus size={40} />
+                        Launch Content Unit
                     </button>
                 </div>
             )}
 
-            {/* ─── QUIZZES TAB ──────────────────────── */}
+            {/* QUIZZES TAB */}
             {activeTab === 'quizzes' && (
                 <div className="space-y-8">
-                    {/* Existing Quizzes */}
                     {quizzes.length > 0 && (
-                        <div className="space-y-3">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Existing Quizzes</h3>
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Global Assessments</h3>
                             {quizzes.map((quiz, qIdx) => (
-                                <div key={quiz._id || qIdx} className={`flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-2xl border shadow-sm transition-all ${editingQuizId === (quiz._id || quiz.id) ? 'border-indigo-400 ring-2 ring-indigo-200' : 'border-slate-100 dark:border-slate-700'
-                                    }`}>
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-emerald-500/20">
-                                            Q{qIdx + 1}
+                                <div key={quiz._id || qIdx} className={`flex items-center justify-between p-6 bg-surface-900 rounded-[2rem] border transition-all duration-300 ${editingQuizId === (quiz._id || quiz.id) ? 'border-indigo-500 shadow-2xl shadow-indigo-500/20' : 'border-white/5 shadow-xl hover:border-white/10'}`}>
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black shadow-lg shadow-emerald-500/20">
+                                            {qIdx + 1}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-slate-800 dark:text-white">{quiz.title}</p>
-                                            <p className="text-xs text-slate-400">{quiz.questions?.length || 0} Questions • MCQ</p>
+                                            <p className="font-black text-white text-lg">{quiz.title}</p>
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{quiz.questions?.length || 0} Questions • Validated MCQ</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => startEditQuiz(quiz)} type="button"
-                                            className="p-2 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors" title="Edit">
-                                            <Pencil size={16} />
+                                    <div className="flex items-center gap-3">
+                                        <button onClick={() => startEditQuiz(quiz)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all">
+                                            <Pencil size={18} />
                                         </button>
-                                        <button onClick={() => handleDeleteQuiz(quiz._id || quiz.id)} type="button"
-                                            className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors" title="Delete">
-                                            <Trash2 size={16} />
+                                        <button onClick={() => handleDeleteQuiz(quiz._id || quiz.id)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-red-400 hover:bg-red-500 hover:text-white transition-all">
+                                            <Trash2 size={18} />
                                         </button>
                                     </div>
                                 </div>
@@ -422,80 +431,72 @@ const SubjectEditor = () => {
                         </div>
                     )}
 
-                    {/* Create / Edit Quiz Form */}
-                    <form onSubmit={handleSubmitQuiz} id="quiz-form" className="space-y-6">
+                    <form onSubmit={handleSubmitQuiz} id="quiz-form" className="space-y-8 animate-fade-in">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">
-                                {editingQuizId ? '✏️ Editing Quiz' : 'Create New Quiz'}
-                            </h3>
+                            <div className="flex items-center gap-3">
+                                <span className="w-2 h-8 bg-indigo-500 rounded-full"></span>
+                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-300">
+                                    {editingQuizId ? 'Edit Performance Assessment' : 'New Assessment Configuration'}
+                                </h3>
+                            </div>
                             {editingQuizId && (
-                                <button type="button" onClick={resetForm}
-                                    className="text-xs font-bold text-red-500 hover:text-red-700 flex items-center gap-1 px-3 py-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                                    <X size={14} /> Cancel Edit
+                                <button type="button" onClick={resetForm} className="text-xs font-black uppercase tracking-widest text-red-500 hover:text-white hover:bg-red-500/10 px-4 py-2 rounded-full border border-red-500/20 transition-all">
+                                    <X size={14} className="inline mr-1" /> Reset Form
                                 </button>
                             )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-surface-900 p-8 rounded-[2rem] border border-white/5 shadow-2xl">
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Quiz Title</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 ml-1">Assessment Reference</label>
                                 <input type="text" required value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)}
-                                    className="input-field" placeholder="e.g. Unit 1 Assessment" />
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white placeholder-slate-600 focus:border-indigo-500/50 outline-none transition-all font-bold" placeholder="e.g. Mid-Term Proficiency Exam" />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">No. of Questions</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 ml-1">Complexity (Questions)</label>
                                 <input type="number" min={1} max={50} value={numQuestions}
                                     onChange={(e) => handleNumQuestionsChange(Number(e.target.value))}
-                                    className="input-field" />
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-indigo-500/50 outline-none transition-all font-bold" />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Options per Question</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 ml-1">Choice Density</label>
                                 <input type="number" min={2} max={8} value={numOptions}
                                     onChange={(e) => handleNumOptionsChange(Number(e.target.value))}
-                                    className="input-field" />
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-indigo-500/50 outline-none transition-all font-bold" />
                             </div>
                         </div>
 
                         {questions.map((q, qIdx) => (
-                            <div key={qIdx} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-4">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-black shadow-lg shadow-indigo-500/20">
+                            <div key={qIdx} className="bg-surface-900 rounded-[2rem] border border-white/5 p-8 shadow-2xl space-y-6">
+                                <div className="flex items-center gap-4">
+                                    <span className="w-10 h-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center font-black shadow-lg shadow-indigo-500/20">
                                         {qIdx + 1}
                                     </span>
-                                    <h4 className="font-bold text-slate-700 dark:text-slate-200">Question {qIdx + 1}</h4>
+                                    <h4 className="text-lg font-black text-white">Question Narrative</h4>
                                 </div>
                                 <input type="text" required value={q.questionText}
                                     onChange={(e) => updateQuestion(qIdx, 'questionText', e.target.value)}
-                                    className="input-field font-medium" placeholder="Enter your question..." />
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-indigo-500/50 outline-none transition-all font-bold" placeholder="High-impact question text goes here..." />
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {q.options.map((opt, oIdx) => (
-                                        <div key={oIdx} className={`flex items-center gap-2 p-3 rounded-xl border transition-all ${q.correctOptionIndex === oIdx
-                                            ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
-                                            : 'border-slate-200 dark:border-slate-700'
-                                            }`}>
-                                            <input type="radio" name={`correct-${qIdx}`} checked={q.correctOptionIndex === oIdx}
-                                                onChange={() => updateQuestion(qIdx, 'correctOptionIndex', oIdx)}
-                                                className="accent-emerald-500 w-4 h-4" />
-                                            <input type="text" required value={opt}
-                                                onChange={(e) => updateOption(qIdx, oIdx, e.target.value)}
-                                                className="flex-1 bg-transparent text-sm font-medium text-slate-700 dark:text-slate-200 outline-none"
-                                                placeholder={`Option ${String.fromCharCode(65 + oIdx)}`} />
+                                        <div key={oIdx} className={`flex items-center gap-4 p-5 rounded-2xl border transition-all duration-300 ${q.correctOptionIndex === oIdx ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/5 bg-white/5 hover:border-white/20'}`}>
+                                            <input type="radio" name={`correct-${qIdx}`} checked={q.correctOptionIndex === oIdx} onChange={() => updateQuestion(qIdx, 'correctOptionIndex', oIdx)}
+                                                className="w-6 h-6 accent-emerald-500 cursor-pointer" />
+                                            <input type="text" required value={opt} onChange={(e) => updateOption(qIdx, oIdx, e.target.value)}
+                                                className="flex-1 bg-transparent text-sm font-black text-slate-200 outline-none" placeholder={`Option ${String.fromCharCode(65 + oIdx)}`} />
                                         </div>
                                     ))}
                                 </div>
-                                <p className="text-xs text-slate-400 flex items-center gap-1">
-                                    <CheckCircle2 size={12} /> Select the radio button for the correct answer
+                                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest flex items-center gap-2 px-1">
+                                    <CheckCircle2 size={12} className="text-emerald-500" /> Verify the correct response marker
                                 </p>
                             </div>
                         ))}
 
                         <button type="submit" disabled={submittingQuiz}
-                            className={`w-full py-4 text-white font-black text-sm rounded-2xl shadow-xl transition-all disabled:opacity-50 ${editingQuizId
-                                ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-indigo-500/25'
-                                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-500/25'
-                                }`}>
-                            {submittingQuiz ? 'Saving...' : editingQuizId ? '✏️ Update Quiz' : '🎯 Create Quiz'}
+                            className={`w-full py-6 text-white font-black text-lg rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500 disabled:opacity-50 ${editingQuizId ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20'}`}>
+                            {submittingQuiz ? 'Processing...' : editingQuizId ? 'Update Performance Assessment' : 'Finalize & Deploy Quiz'}
                         </button>
                     </form>
                 </div>
