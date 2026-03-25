@@ -90,7 +90,7 @@ const AiChatbox = ({ contextText, subjectId, onClose }) => {
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Ask a question..."
                     className="flex-1 border-slate-200 rounded-full text-sm focus:ring-primary-500"
-                    disabled={loading || !contextText}
+                    disabled={loading}
                 />
                 <button
                     type="submit"

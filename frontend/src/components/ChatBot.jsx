@@ -1,39 +1,24 @@
 import { useState } from "react";
+import api from "../services/api";
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
-const ChatBot = ({ subjectId }) => {
+const ChatBot = ({ subjectId, contextText }) => {
     const [question, setQuestion] = useState("");
     const [answer, setAnswer] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const getToken = () => {
-        try {
-            const userInfo = localStorage.getItem("userInfo");
-            return userInfo ? JSON.parse(userInfo).token : null;
-        } catch { return null; }
-    };
-
     const askQuestion = async () => {
         if (!question.trim()) return;
         setLoading(true);
+        setAnswer("");
         try {
-            const res = await fetch(`${BACKEND_URL}/ai/rag-ask`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${getToken()}`
-                },
-                body: JSON.stringify({
-                    question: question,
-                    subject_id: subjectId
-                })
+            const { data } = await api.post("/ai/ask", {
+                subjectId,
+                context: contextText || "",
+                query: question
             });
-
-            const data = await res.json();
             setAnswer(data.answer || "No answer returned.");
         } catch (err) {
-            setAnswer("Error getting response");
+            setAnswer("Error getting response. Please try again.");
         }
         setLoading(false);
     };

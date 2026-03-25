@@ -364,7 +364,10 @@ const SubjectReader = () => {
                         {/* RAG Chatbot */}
                         <div className="px-4 sm:px-16 lg:px-24 pb-10">
                             <div className="max-w-3xl mx-auto">
-                                <ChatBot subjectId={subject._id} />
+                                <ChatBot
+                                    subjectId={subject._id}
+                                    contextText={currentSection?.paragraphs?.join('\n') || ''}
+                                />
                             </div>
                         </div>
                     </>
