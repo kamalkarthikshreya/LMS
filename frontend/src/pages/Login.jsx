@@ -132,9 +132,11 @@ const Login = () => {
                     <h2 className="text-3xl sm:text-4xl font-black text-white mb-1 tracking-tight">Welcome back</h2>
                     <p className="text-white/40 font-medium mb-8">Sign in to your account to continue</p>
 
-                    {/* One-click demo logins */}
-                    <div className="mb-6">
-                        <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-3">Quick Demo Login</p>
+                    <div className="mb-6 bg-white/5 border border-white/10 p-4 rounded-2xl">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-xs font-black uppercase tracking-widest text-white/50">Quick Demo Login</p>
+                            <span className="text-[10px] bg-white/10 px-2 py-1 rounded text-white/50 font-mono">Pass: password123</span>
+                        </div>
                         <div className="grid grid-cols-3 gap-2">
                             {DEMO_USERS.map(u => (
                                 <button key={u.label} onClick={() => fillDemo(u.email)}

@@ -52,10 +52,6 @@ const StudentDash = ({ currentView = 'courses' }) => {
     };
 
     const handleEnroll = async (subjectId) => {
-        if (enrollments.length >= 3) {
-            alert('You can only enroll in a maximum of 3 subjects.');
-            return;
-        }
         try {
             await api.post(`/enrollments/${subjectId}`);
             fetchData(); // Refresh data
@@ -211,7 +207,7 @@ const StudentDash = ({ currentView = 'courses' }) => {
             </div>
 
             {/* Available Subjects */}
-            {enrollments.length < 3 && availableSubjects.length > 0 && (
+            {availableSubjects.length > 0 && (
                 <div className="pt-8 mt-8 border-t border-slate-200">
                     <h2 className="text-xl font-bold text-slate-800 mb-6">Available to Enroll</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

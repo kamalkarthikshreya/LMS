@@ -36,11 +36,8 @@ const InstructorDash = ({ currentView = 'dashboard' }) => {
     const fetchAll = async () => {
         try {
             const { data: subs } = await api.get('/subjects');
-            // Ensure we only show subjects belonging to the currently logged in instructor
-            const mySubs = subs.filter(s => {
-                const instrId = s.instructorId?._id || s.instructorId?.id || s.instructorId;
-                return String(instrId) === String(user.id || user._id);
-            });
+            // Show all subjects to allow cross-instructor collaboration
+            const mySubs = subs;
 
             setSubjects(mySubs);
 

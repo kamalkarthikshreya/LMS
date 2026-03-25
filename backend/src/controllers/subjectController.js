@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const { Subject, User } = require('../models');
 
 // @desc    Get all subjects
@@ -61,6 +62,24 @@ const createSubject = async (req, res) => {
     try {
         const { title, description, units, thumbnail } = req.body;
 
+        const allSubjects = await Subject.findAll({ attributes: ['title'] });
+        const newTitleLower = title.trim().toLowerCase();
+        
+        const duplicateMatch = allSubjects.find(sub => {
+            const existingLower = sub.title.toLowerCase();
+            const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            
+            // Check if the new title contains the full old title as a distinct word, or vice versa
+            const regexNewInOld = new RegExp(`\\b${escapeRegExp(newTitleLower)}\\b`, 'i');
+            const regexOldInNew = new RegExp(`\\b${escapeRegExp(existingLower)}\\b`, 'i');
+            
+            return regexNewInOld.test(existingLower) || regexOldInNew.test(newTitleLower);
+        });
+
+        if (duplicateMatch) {
+            return res.status(400).json({ message: `A similar subject "${duplicateMatch.title}" already exists. Subjects cannot be repeated or have overlapping names.` });
+        }
+
         const subject = await Subject.create({
             title,
             description: description || '',
@@ -81,7 +100,7 @@ const createSubject = async (req, res) => {
 const updateSubject = async (req, res) => {
     console.log(`\n\n[API UPDATE SUBJECT] Received request for ID: ${req.params.id}`);
     try {
-        const { title, description, units, thumbnail } = req.body;
+        const { title, description, units, thumbnail, instructor_id } = req.body;
         console.log(`[API UPDATE SUBJECT] Units provided: ${units ? units.length : 0}`);
 
         const subject = await Subject.findByPk(req.params.id);
@@ -90,6 +109,11 @@ const updateSubject = async (req, res) => {
             // Check if user is the instructor of this subject or an admin
             if (String(subject.instructorId) !== String(req.user.id) && req.user.role !== 'ADMIN') {
                 return res.status(401).json({ message: 'Not authorized to update this subject' });
+            }
+
+            // Allow Admin to assign this subject to a new instructor
+            if (instructor_id && req.user.role === 'ADMIN') {
+                subject.instructorId = instructor_id;
             }
 
             subject.title = title || subject.title;

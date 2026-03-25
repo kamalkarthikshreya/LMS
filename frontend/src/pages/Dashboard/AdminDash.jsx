@@ -153,8 +153,8 @@ const AdminDash = ({ currentView = 'overview' }) => {
                     >
                         <option value="">-- Choose a subject --</option>
                         {subjects.map(s => (
-                            <option key={s.subject_id} value={s.subject_id}>
-                                {s.subject_name}{s.instructor_id ? ' (already assigned)' : ''}
+                            <option key={s._id || s.id} value={s._id || s.id}>
+                                {s.title || s.subject_name}{s.instructorId ? ' (already assigned)' : ''}
                             </option>
                         ))}
                     </select>

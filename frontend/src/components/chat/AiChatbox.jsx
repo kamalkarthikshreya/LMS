@@ -31,7 +31,8 @@ const AiChatbox = ({ contextText, subjectId, onClose }) => {
             const { data } = await api.post('/ai/ask', {
                 subjectId,
                 context: contextText,
-                query
+                query,
+                history: messages.slice(1)
             });
 
             setMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);

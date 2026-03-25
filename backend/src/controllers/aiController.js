@@ -26,15 +26,27 @@ const extractKeywords = (text) =>
 const extractiveAnswer = async (context, question) => {
     const qKeywords = extractKeywords(question);
     
-    // Fallback to Wikipedia for general knowledge if no keywords found or no content
+    // Fallback to Wikipedia for general knowledge using 2-step search
     const fetchWikipedia = async (searchTerm) => {
         try {
-            const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(searchTerm)}`);
-            if (res.ok) {
-                const data = await res.json();
-                return `[General Knowledge]: ${data.extract}`;
+            // Step 1: Search Wikipedia to resolve typos/acronyms (e.g. "rdms") to exact articles (e.g. "RDBMS")
+            const searchRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerm)}&utf8=&format=json&origin=*`);
+            if (searchRes.ok) {
+                const searchData = await searchRes.json();
+                if (searchData.query && searchData.query.search && searchData.query.search.length > 0) {
+                    const bestTitle = searchData.query.search[0].title;
+                    
+                    // Step 2: Fetch the summary of the exact matched title
+                    const summaryRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(bestTitle)}`);
+                    if (summaryRes.ok) {
+                        const summaryData = await summaryRes.json();
+                        if (summaryData.extract) {
+                            return `[General Knowledge - ${bestTitle}]: ${summaryData.extract}`;
+                        }
+                    }
+                }
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) { console.error('Wikipedia Fetch Error:', e); }
         return "I could not find information about that in the course material, and I couldn't reach the encyclopedia.";
     };
 
@@ -85,7 +97,7 @@ const extractiveAnswer = async (context, question) => {
 // @access  Private/Student
 const askContextualQuestion = async (req, res) => {
     try {
-        const { subjectId, context, query } = req.body;
+        const { subjectId, context, query, history = [] } = req.body;
 
         if (!query) {
             return res.status(400).json({ message: 'Query is required' });
@@ -93,7 +105,78 @@ const askContextualQuestion = async (req, res) => {
 
         // Use extractive QA (with Wikipedia fallback) when no OpenAI key is set
         if (!process.env.OPENAI_API_KEY) {
-            const answer = await extractiveAnswer(context || '', query);
+            let contextualQuery = query;
+            const currentKeywords = extractKeywords(query);
+            const queryLower = query.toLowerCase();
+            
+            // Detect if user wants brief or detailed response
+            const wantsBrief = /\b(brief|briefly|short|shortly|summary|summarize|summarise|concise|concisely|quick|quickly|one.?line|tldr)\b/i.test(queryLower);
+            const wantsDetail = !wantsBrief && /\b(detail|detailed|elaborate|depth|expand|thorough|comprehensive|in.?depth)\b/i.test(queryLower);
+            
+            // Fix conversation context loss for short follow-up questions (e.g., "explain briefly")
+            if (currentKeywords.length <= 1 && history.length > 0) {
+                const userMsgs = history.filter(m => m.role === 'user');
+                if (userMsgs.length > 0) {
+                    const lastMsg = userMsgs[userMsgs.length - 1].content;
+                    contextualQuery = `${lastMsg} ${query}`;
+                }
+            }
+            
+            let answer = await extractiveAnswer(context || '', contextualQuery);
+            
+            // Post-process: if this is a follow-up request (explain, briefly, more detail, etc.), 
+            // provide a RICHER, LONGER answer from Wikipedia's full intro section
+            const isFollowUp = history.length > 0 && (
+                /\b(brief|briefly|explain|more|detail|elaborate|expand|depth|short|summary|comprehensive)\b/i.test(queryLower)
+            );
+            
+            if (isFollowUp && answer.includes('[General Knowledge')) {
+                // Extract the topic from the previous answer to search Wikipedia for richer content
+                const topicKeywords = extractKeywords(contextualQuery);
+                if (topicKeywords.length > 0) {
+                    try {
+                        // Use Wikipedia's TextExtracts API to get full intro section (much longer than summary)
+                        const wikiRes = await fetch(
+                            `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(topicKeywords.join(' '))}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*&redirects=1`
+                        );
+                        if (wikiRes.ok) {
+                            const wikiData = await wikiRes.json();
+                            const pages = wikiData.query?.pages;
+                            if (pages) {
+                                const page = Object.values(pages)[0];
+                                if (page && page.extract && page.extract.length > 50) {
+                                    answer = `[${page.title} - Explained]: ${page.extract}`;
+                                }
+                            }
+                        }
+                        
+                        // If the direct title didn't work, search first then extract
+                        if (answer.includes('[General Knowledge')) {
+                            const searchRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(topicKeywords.join(' '))}&utf8=&format=json&origin=*`);
+                            if (searchRes.ok) {
+                                const searchData = await searchRes.json();
+                                if (searchData.query?.search?.length > 0) {
+                                    const bestTitle = searchData.query.search[0].title;
+                                    const extractRes = await fetch(
+                                        `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(bestTitle)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*&redirects=1`
+                                    );
+                                    if (extractRes.ok) {
+                                        const extractData = await extractRes.json();
+                                        const pages2 = extractData.query?.pages;
+                                        if (pages2) {
+                                            const page2 = Object.values(pages2)[0];
+                                            if (page2 && page2.extract && page2.extract.length > 50) {
+                                                answer = `[${page2.title} - Explained]: ${page2.extract}`;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) { /* use original answer */ }
+                }
+            }
+            
             return res.json({ answer });
         }
 
@@ -109,10 +192,16 @@ Course Context:
 ${context}
 `;
 
+        const chatHistory = history.map(m => ({
+            role: m.role,
+            content: String(m.content)
+        }));
+
         const response = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
                 { role: 'system', content: systemPrompt },
+                ...chatHistory,
                 { role: 'user', content: query }
             ],
             temperature: 0.1,

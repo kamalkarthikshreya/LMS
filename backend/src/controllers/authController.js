@@ -33,6 +33,7 @@ const registerUser = async (req, res) => {
             userExists.name = name;
             userExists.password = hashedPassword;
             userExists.role = role || 'STUDENT';
+            userExists.status = role === 'INSTRUCTOR' ? 'INACTIVE' : 'ACTIVE';
             userExists.verificationCode = verificationCode;
             await userExists.save();
 
@@ -63,6 +64,7 @@ const registerUser = async (req, res) => {
             email,
             password: hashedPassword,
             role: role || 'STUDENT',
+            status: role === 'INSTRUCTOR' ? 'INACTIVE' : 'ACTIVE',
             verificationCode,
             isVerified: false
         });
@@ -148,7 +150,8 @@ const loginUser = async (req, res) => {
                 return res.status(403).json({ message: 'Account is inactive. Contact admin.' });
             }
 
-            if (!user.isVerified) {
+            // Bypass email verification block specifically for demo portfolio accounts
+            if (!user.isVerified && !user.email.endsWith('@lms.com')) {
                 return res.status(403).json({ message: 'Please verify your email address to log in.', unverified: true });
             }
 
