@@ -99,43 +99,64 @@ const createSubject = async (req, res) => {
 // @access  Private/Instructor
 const updateSubject = async (req, res) => {
     console.log(`\n\n[API UPDATE SUBJECT] Received request for ID: ${req.params.id}`);
+
     try {
         const { title, description, units, thumbnail, instructor_id } = req.body;
+
         console.log(`[API UPDATE SUBJECT] Units provided: ${units ? units.length : 0}`);
 
         const subject = await Subject.findByPk(req.params.id);
 
-        if (subject) {
-            // Check if user is the instructor of this subject or an admin
-            if (String(subject.instructorId) !== String(req.user.id) && req.user.role !== 'ADMIN') {
-                return res.status(401).json({ message: 'Not authorized to update this subject' });
-            }
-
-            // Allow Admin to assign this subject to a new instructor
-            if (instructor_id && req.user.role === 'ADMIN') {
-                subject.instructorId = instructor_id;
-            }
-
-            subject.title = title || subject.title;
-            subject.description = description || subject.description;
-            if (thumbnail) subject.thumbnail = thumbnail;
-            if (units) subject.units = units;
-
-            // Mark JSONB as changed so Sequelize persists it
-            subject.changed('units', true);
-
-            await subject.save();
-            res.json(subject);
-        } else {
-            res.status(404).json({ message: 'Subject not found' });
+        if (!subject) {
+            return res.status(404).json({ message: 'Subject not found' });
         }
+
+        // ✅ DEBUG (IMPORTANT)
+        console.log("Subject Instructor ID:", subject.instructorId);
+        console.log("Logged-in User:", req.user);
+
+        // ❌ FIX: handle missing user safely
+        if (!req.user) {
+            return res.status(401).json({ message: 'User not authenticated' });
+        }
+
+        // ❌ FIX: proper authorization check
+        if (
+            String(subject.instructorId) !== String(req.user.id) &&
+            req.user.role !== 'ADMIN'
+        ) {
+            return res.status(403).json({ message: 'Not authorized to update this subject' });
+        }
+
+        // ✅ Allow admin to reassign instructor
+        if (instructor_id && req.user.role === 'ADMIN') {
+            subject.instructorId = instructor_id;
+        }
+
+        // ✅ Update fields
+        subject.title = title || subject.title;
+        subject.description = description || subject.description;
+
+        if (thumbnail) subject.thumbnail = thumbnail;
+        if (units) {
+            subject.units = units;
+            subject.changed('units', true); // important for JSONB
+        }
+
+        await subject.save();
+
+        res.json(subject);
+
     } catch (error) {
         console.error('------- SUBJECT UPDATE ERROR -------');
         console.error(error);
+
         if (error.errors) {
             error.errors.forEach(e => console.error('Validation Error:', e.message));
         }
+
         console.error('------------------------------------');
+
         res.status(500).json({ message: error.message, details: error.errors });
     }
 };
