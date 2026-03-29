@@ -4,6 +4,7 @@ import {
     AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
+import { TrendingUp } from 'lucide-react';
 import ProfileSection from './ProfileSection';
 
 const PINTEREST_IMAGES = [
