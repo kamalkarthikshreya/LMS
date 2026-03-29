@@ -103,9 +103,16 @@ app.use('/api/upload', uploadRoutes);
 
 const PORT = process.env.PORT || 5000;
 
-// Only listen locally, Vercel handles the export
-if (!process.env.VERCEL) {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-}
+const startServer = async () => {
+    await connectDB();
+    await sequelize.sync(); // Tables already created
+    console.log('All tables synced');
+
+    if (process.env.NODE_ENV !== 'production') {
+        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    }
+};
+
+startServer();
 
 module.exports = app;
