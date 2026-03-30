@@ -1,3 +1,4 @@
+require('dotenv').config({ path: './.env' });
 const { User } = require('./src/models');
 const bcrypt = require('bcrypt');
 
@@ -8,7 +9,8 @@ async function restoreDemoUsers() {
         const demoUsers = [
             { name: 'Demo Student', email: 'student@lms.com', role: 'STUDENT', status: 'ACTIVE' },
             { name: 'Demo Instructor', email: 'instructor@lms.com', role: 'INSTRUCTOR', status: 'ACTIVE' },
-            { name: 'Demo Admin', email: 'admin@lms.com', role: 'ADMIN', status: 'ACTIVE' }
+            { name: 'Demo Admin', email: 'admin@lms.com', role: 'ADMIN', status: 'ACTIVE' },
+            { name: 'Demo IT Admin', email: 'itadmin@lms.com', role: 'IT_ADMIN', status: 'ACTIVE' }
         ];
 
         const salt = await bcrypt.genSalt(10);

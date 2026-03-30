@@ -9,11 +9,14 @@ import AdminDash from './pages/Dashboard/AdminDash';
 import SubjectEditor from './pages/Dashboard/SubjectEditor';
 import InstructorDash from './pages/Dashboard/InstructorDash';
 import StudentDash from './pages/Dashboard/StudentDash';
+import ITAdminDash from './pages/Dashboard/ITAdminDash';
 import SubjectReader from './pages/Reader/SubjectReader';
 import QuizTaker from './pages/Assessment/QuizTaker';
 import ResultsViewer from './pages/Assessment/ResultsViewer';
+import ReportGlitchModal from './components/ReportGlitchModal';
+import ImpersonationBanner from './components/ImpersonationBanner';
 
-import { LogOut, Sun, Moon, Monitor, User as UserIcon, Settings, ChevronDown, Languages } from 'lucide-react';
+import { LogOut, Sun, Moon, Monitor, User as UserIcon, Settings, ChevronDown, Languages, LifeBuoy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const LanguageSelector = () => {
@@ -115,15 +118,28 @@ const DashboardLayout = ({ defaultView = 'dashboard', renderContent }) => {
   const [activeView, setActiveView] = useState(defaultView);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showGlitchModal, setShowGlitchModal] = useState(false);
   const { user, logout } = useAuth();
   const { t } = useTranslation();
+
+  // Check if we are in impersonation mode
+  const isImpersonating = user?.impersonatedBy;
+
+  const handleExitImpersonation = () => {
+    const backup = localStorage.getItem('itadmin_backup');
+    if (backup) {
+      localStorage.setItem('userInfo', backup);
+      localStorage.removeItem('itadmin_backup');
+    }
+    window.location.href = '/dashboard';
+  };
 
   if (!user) return <Navigate to="/login" replace />;
 
   const isStudent = user.role === 'STUDENT';
   const isAdmin = user.role === 'ADMIN';
 
-  const navItems = isAdmin
+  const navItems = user.role === 'ADMIN'
     ? [
       { id: 'overview', label: t('dashboard') },
       { id: 'all-users', label: 'All Users' },
@@ -131,14 +147,17 @@ const DashboardLayout = ({ defaultView = 'dashboard', renderContent }) => {
       { id: 'instructors', label: 'Instructors' },
       { id: 'rankings', label: 'Rankings' },
       { id: 'statistics', label: 'Statistics' },
-      { id: 'activity', label: 'Activity Logs' }
-    ]
-    : [
-      { id: 'dashboard', label: t('dashboard') },
-      { id: 'courses', label: t('courses') },
-      { id: 'tests', label: t('assessments') },
-      { id: 'progress', label: t('progress') }
-    ];
+      { id: 'activity', label: 'Activity Logs' },
+      { id: 'glitches', label: 'Tech Glitches' }
+    ] : user.role === 'IT_ADMIN'
+      ? [
+        { id: 'glitches', label: 'System Issues' }
+      ] : [
+        { id: 'dashboard', label: t('dashboard') },
+        { id: 'courses', label: t('courses') },
+        { id: 'tests', label: t('assessments') },
+        { id: 'progress', label: t('progress') }
+      ];
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-white dark:bg-surface-950 transition-colors duration-300">
@@ -159,8 +178,8 @@ const DashboardLayout = ({ defaultView = 'dashboard', renderContent }) => {
               setActiveView(item.id);
               setShowMobileMenu(false);
             }}
-            className={`flex w-full items-center px-5 py-3.5 text-sm font-black rounded-2xl transition-all duration-300 ${activeView === item.id 
-              ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 translate-x-1' 
+            className={`flex w-full items-center px-5 py-3.5 text-sm font-black rounded-2xl transition-all duration-300 ${activeView === item.id
+              ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 translate-x-1'
               : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 dark:hover:text-white hover:text-slate-900'}`}
           >
             {item.label}
@@ -171,7 +190,7 @@ const DashboardLayout = ({ defaultView = 'dashboard', renderContent }) => {
   );
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-surface-950 w-full overflow-hidden font-sans transition-colors duration-300">
+    <div className={`flex h-screen bg-slate-50 dark:bg-surface-950 w-full overflow-hidden font-sans transition-colors duration-300 ${isImpersonating ? 'pt-10' : ''}`}>
       {/* Desktop Sidebar */}
       <aside className="w-[280px] hidden lg:flex flex-col h-full border-r border-slate-200 dark:border-white/5 shadow-2xl">
         <SidebarContent />
@@ -202,6 +221,15 @@ const DashboardLayout = ({ defaultView = 'dashboard', renderContent }) => {
           </div>
 
           <div className="flex items-center gap-3 lg:gap-6">
+            {user.role !== 'IT_ADMIN' && (
+              <button
+                onClick={() => setShowGlitchModal(true)}
+                className="p-2 rounded-xl text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 dark:hover:bg-rose-500/20 transition-colors flex items-center justify-center shadow-inner"
+                title="Report Tech Glitch"
+              >
+                <LifeBuoy size={20} />
+              </button>
+            )}
             <LanguageSelector />
             <ThemeToggle />
 
@@ -263,6 +291,11 @@ const DashboardLayout = ({ defaultView = 'dashboard', renderContent }) => {
           {renderContent(activeView)}
         </div>
       </main>
+
+      <ReportGlitchModal isOpen={showGlitchModal} onClose={() => setShowGlitchModal(false)} />
+      {isImpersonating && (
+        <ImpersonationBanner viewingAs={user.role} onExit={handleExitImpersonation} />
+      )}
     </div>
   );
 };
@@ -271,6 +304,7 @@ const DashboardRouter = () => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'ADMIN') return <DashboardLayout defaultView="overview" renderContent={(view) => <AdminDash currentView={view} />} />;
+  if (user.role === 'IT_ADMIN') return <DashboardLayout defaultView="glitches" renderContent={(view) => <ITAdminDash currentView={view} />} />;
   if (user.role === 'INSTRUCTOR') return <DashboardLayout defaultView="dashboard" renderContent={(view) => <InstructorDash currentView={view} />} />;
   return <DashboardLayout defaultView="courses" renderContent={(view) => <StudentDash currentView={view} />} />;
 };

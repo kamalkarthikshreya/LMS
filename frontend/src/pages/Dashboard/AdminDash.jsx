@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import ProfileSection from './ProfileSection';
+import ITAdminDash from './ITAdminDash';
 
 const PINTEREST_IMAGES = [
     'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&q=80',
@@ -273,6 +274,7 @@ const AdminDash = ({ currentView = 'overview' }) => {
     );
 
     if (currentView === 'profile') return <ProfileSection />;
+    if (currentView === 'glitches') return <ITAdminDash />;
 
     // --- Activity Logs Table ---
     if (currentView === 'activity') return (
