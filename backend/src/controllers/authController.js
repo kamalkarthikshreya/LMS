@@ -208,4 +208,33 @@ const logoutUser = async (req, res) => {
     }
 };
 
-module.exports = { registerUser, loginUser, getMe, logoutUser, verifyEmail };
+const impersonateRole = async (req, res) => {
+    try {
+        const { targetRole } = req.body;
+        const allowedRoles = ['ADMIN', 'INSTRUCTOR', 'STUDENT'];
+        if (!allowedRoles.includes(targetRole)) {
+            return res.status(400).json({ message: 'Invalid target role. Must be ADMIN, INSTRUCTOR, or STUDENT.' });
+        }
+        // Issue a short-lived impersonation token (2 hours)
+        const impersonationToken = jwt.sign(
+            { id: req.user.id, role: targetRole, status: 'ACTIVE', impersonatedBy: req.user.id },
+            process.env.JWT_SECRET,
+            { expiresIn: '2h' }
+        );
+        const itAdmin = await User.findByPk(req.user.id, { attributes: ['id', 'name', 'email', 'userId'] });
+        res.json({
+            token: impersonationToken,
+            role: targetRole,
+            name: itAdmin.name,
+            email: itAdmin.email,
+            userId: itAdmin.userId,
+            _id: String(itAdmin.id),
+            impersonatedBy: req.user.id,
+            status: 'ACTIVE'
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { registerUser, loginUser, getMe, logoutUser, verifyEmail, impersonateRole };

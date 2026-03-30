@@ -1,10 +1,28 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Eye, Shield, GraduationCap, BookOpen } from 'lucide-react';
 
 const ITAdminDash = ({ currentView = 'glitches' }) => {
     const [glitches, setGlitches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [impersonating, setImpersonating] = useState(false);
+
+    const handleViewAs = async (targetRole) => {
+        try {
+            setImpersonating(targetRole);
+            const { data } = await api.post('/auth/impersonate', { targetRole });
+            // Save current IT Admin session so we can restore it
+            const currentUser = localStorage.getItem('userInfo');
+            localStorage.setItem('itadmin_backup', currentUser);
+            // Switch to impersonated session
+            localStorage.setItem('userInfo', JSON.stringify(data));
+            window.location.href = '/dashboard';
+        } catch (error) {
+            console.error('Impersonation failed:', error);
+            alert('Failed to switch role. Please try again.');
+            setImpersonating(false);
+        }
+    };
 
     useEffect(() => {
         fetchGlitches();
@@ -54,6 +72,7 @@ const ITAdminDash = ({ currentView = 'glitches' }) => {
 
     return (
         <div className="space-y-8 animate-fade-in-up">
+            {/* Hero Banner */}
             <div className="relative rounded-[2.5rem] overflow-hidden h-40 lg:h-56 group shadow-2xl transition-colors duration-300 bg-gradient-to-r from-slate-900 to-slate-800">
                 <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
                 <div className="absolute inset-0 flex items-center px-8 lg:px-16">
@@ -67,6 +86,44 @@ const ITAdminDash = ({ currentView = 'glitches' }) => {
                             <span className="text-emerald-400">Command Center</span>
                         </h1>
                     </div>
+                </div>
+            </div>
+
+            {/* View As Role Section */}
+            <div className="bg-white dark:bg-surface-850 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-white/5 p-8">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
+                        <Eye size={20} className="text-indigo-500" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">View As Role</h2>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Switch dashboard perspective without logging out</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                        { role: 'ADMIN', label: 'System Admin', desc: 'User management, analytics', icon: <Shield size={22} />, gradient: 'from-violet-500 to-purple-600', shadow: 'shadow-violet-500/30' },
+                        { role: 'INSTRUCTOR', label: 'Instructor', desc: 'Subject editor, student progress', icon: <BookOpen size={22} />, gradient: 'from-blue-500 to-indigo-600', shadow: 'shadow-blue-500/30' },
+                        { role: 'STUDENT', label: 'Student', desc: 'Courses, quizzes, results', icon: <GraduationCap size={22} />, gradient: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/30' },
+                    ].map(({ role, label, desc, icon, gradient, shadow }) => (
+                        <button
+                            key={role}
+                            onClick={() => handleViewAs(role)}
+                            disabled={impersonating === role}
+                            className={`relative group flex items-center gap-4 p-6 rounded-3xl bg-gradient-to-br ${gradient} text-white shadow-xl ${shadow} hover:-translate-y-1 active:translate-y-0 transition-all duration-300 disabled:opacity-70 disabled:cursor-wait border border-white/10 overflow-hidden`}
+                        >
+                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl" />
+                            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                                {impersonating === role ? (
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : icon}
+                            </div>
+                            <div className="text-left">
+                                <p className="text-sm font-black uppercase tracking-tight">{label}</p>
+                                <p className="text-[10px] text-white/70 font-bold mt-0.5">{desc}</p>
+                            </div>
+                        </button>
+                    ))}
                 </div>
             </div>
 
