@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import api, { getThumbnail } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Plus, Edit2, Trash2, Trophy, X, BookOpen, Users, FileQuestion } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -19,6 +19,7 @@ const ACCENTS = [
     { bar: 'border-indigo-500', bg: 'bg-indigo-500', color: '#6366f1' },
     { bar: 'border-amber-400', bg: 'bg-amber-500', color: '#f59e0b' },
 ];
+
 
 const InstructorDash = ({ currentView = 'dashboard' }) => {
     const navigate = useNavigate();
@@ -238,7 +239,7 @@ const InstructorDash = ({ currentView = 'dashboard' }) => {
                             return (
                                 <div key={subject._id} className="group relative rounded-[2.5rem] overflow-hidden bg-white dark:bg-surface-850 border border-slate-100 dark:border-white/5 h-[440px] flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-black/60 hover:-translate-y-2">
                                     <div className="h-52 w-full relative overflow-hidden">
-                                        <img src={subject.thumbnail || SUBJECT_IMAGES[index % SUBJECT_IMAGES.length]} alt={subject.title}
+                                        <img src={getThumbnail(subject.thumbnail) || SUBJECT_IMAGES[index % SUBJECT_IMAGES.length]} alt={subject.title}
                                             className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-surface-850 via-transparent to-transparent"></div>
                                         
@@ -305,7 +306,7 @@ const InstructorDash = ({ currentView = 'dashboard' }) => {
                             return (
                                 <div key={subject._id} className="bg-white dark:bg-surface-850 rounded-[3rem] border border-slate-100 dark:border-white/5 shadow-2xl overflow-hidden group hover:bg-slate-50 dark:hover:bg-surface-800 transition-all duration-500">
                                     <div className="relative h-36">
-                                        <img src={subject.thumbnail || SUBJECT_IMAGES[i % SUBJECT_IMAGES.length]} alt={subject.title} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-700" />
+                                        <img src={getThumbnail(subject.thumbnail) || SUBJECT_IMAGES[i % SUBJECT_IMAGES.length]} alt={subject.title} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-700" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-surface-850 to-transparent flex items-end p-8">
                                             <div>
                                                 <h3 className="font-black text-2xl text-slate-900 dark:text-white tracking-tighter uppercase">{subject.title}</h3>
@@ -392,7 +393,7 @@ const InstructorDash = ({ currentView = 'dashboard' }) => {
                 return (
                     <div key={subject._id} className="bg-white dark:bg-surface-850 rounded-[3rem] border border-slate-100 dark:border-white/5 shadow-2xl overflow-hidden transition-all duration-500 hover:bg-slate-50 dark:hover:bg-surface-800">
                         <div className="relative h-28">
-                            <img src={subject.thumbnail || SUBJECT_IMAGES[i % SUBJECT_IMAGES.length]} alt={subject.title} className="w-full h-full object-cover opacity-30" />
+                            <img src={getThumbnail(subject.thumbnail) || SUBJECT_IMAGES[i % SUBJECT_IMAGES.length]} alt={subject.title} className="w-full h-full object-cover opacity-30" />
                             <div className="absolute inset-0 bg-gradient-to-r from-white dark:from-surface-850 via-white/80 dark:via-surface-850/60 to-transparent flex items-center px-10 transition-colors duration-300">
                                 <div>
                                     <div className="flex items-center gap-3 mb-1">

@@ -1,8 +1,46 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import api, { getThumbnail } from '../../services/api';
 import { CheckCircle2, AlertCircle, ArrowLeft, Trophy, Target, BookOpen, Flag } from 'lucide-react';
 import MathJaxRenderer from '../../components/renderers/MathJaxRenderer';
+import { useTranslation } from 'react-i18next';
+import { Loader2, Languages, ChevronDown } from 'lucide-react';
+
+// Internal Language Selector for Quiz / Reader pages that are outside DashboardLayout
+const InternalLanguageSelector = () => {
+    const { i18n } = useTranslation();
+    const [show, setShow] = useState(false);
+    const langs = [
+        { code: 'en', label: 'English' },
+        { code: 'kn', label: 'ಕನ್ನಡ' },
+        { code: 'hi', label: 'हिन्दी' },
+        { code: 'te', label: 'తెలుగు' },
+        { code: 'mr', label: 'मराठी' }
+    ];
+
+    return (
+        <div className="relative">
+            <button onClick={() => setShow(!show)} className="p-2.5 rounded-xl bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all flex items-center gap-2 border border-white/5">
+                <Languages size={18} className="text-indigo-400" />
+                <span className="text-[10px] font-black uppercase">{i18n.language.split('-')[0]}</span>
+                <ChevronDown size={12} className={`transition-transform ${show ? 'rotate-180' : ''}`} />
+            </button>
+            {show && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShow(false)}></div>
+                    <div className="absolute right-0 mt-2 w-32 bg-surface-850 rounded-2xl shadow-2xl border border-white/10 py-2 z-50 animate-fade-in-up">
+                        {langs.map(l => (
+                            <button key={l.code} onClick={() => { i18n.changeLanguage(l.code); setShow(false); }}
+                                className={`w-full text-left px-4 py-2 text-xs font-black hover:bg-indigo-500/10 transition-colors ${i18n.language.startsWith(l.code) ? 'text-indigo-400' : 'text-slate-400'}`}>
+                                {l.label}
+                            </button>
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
 
 const SUBJECT_IMAGES = [
     'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=800&q=80', // code terminal
@@ -22,7 +60,20 @@ const QuizTaker = () => {
     const [flaggedQuestions, setFlaggedQuestions] = useState({});
     const [flagInput, setFlagInput] = useState({ open: null, reason: '' });
 
+    const { t, i18n } = useTranslation();
+    const [translatedQuiz, setTranslatedQuiz] = useState(null);
+    const [isTranslating, setIsTranslating] = useState(false);
+
     useEffect(() => { fetchQuizzes(); }, [subjectId]);
+
+    // Re-translate if language changes while taking a quiz
+    useEffect(() => {
+        if (activeQuiz && i18n.language !== 'en') {
+            handleTranslateQuiz(activeQuiz);
+        } else if (activeQuiz && i18n.language === 'en') {
+            setTranslatedQuiz(null); // Revert to English
+        }
+    }, [i18n.language, activeQuiz]);
 
     const fetchQuizzes = async () => {
         try {
@@ -37,9 +88,44 @@ const QuizTaker = () => {
 
     const startQuiz = (quiz) => {
         setActiveQuiz(quiz);
+        setTranslatedQuiz(null);
         setAnswers(new Array(quiz.questions.length).fill(null));
         setResult(null);
         window.scrollTo(0, 0);
+
+        if (i18n.language !== 'en') {
+            handleTranslateQuiz(quiz);
+        }
+    };
+
+    const handleTranslateQuiz = async (quiz) => {
+        if (!quiz || isTranslating) return;
+        setIsTranslating(true);
+        try {
+            // Bulk translate the whole quiz structure
+            const quizPayload = {
+                title: quiz.title,
+                questions: quiz.questions.map(q => ({
+                    questionText: q.questionText,
+                    options: q.options
+                }))
+            };
+
+            const res = await api.post('/ai/translate', {
+                text: JSON.stringify(quizPayload),
+                targetLang: i18n.language,
+                isJson: true // Helping backend know it's a structural translation
+            });
+
+            const translatedData = JSON.parse(res.data.translatedText);
+            setTranslatedQuiz(translatedData);
+        } catch (error) {
+            console.warn('Quiz translation fallback triggered:', error.message);
+            // Silently stay in English/original if translation fails
+            setTranslatedQuiz(null);
+        } finally {
+            setIsTranslating(false);
+        }
     };
 
     const handleSelectOption = (qIndex, optionIndex) => {
@@ -157,18 +243,41 @@ const QuizTaker = () => {
             <div className="min-h-screen bg-slate-50">
                 {/* Header */}
                 <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 py-4 flex items-center justify-between shadow-sm">
-                    <button
-                        onClick={() => setActiveQuiz(null)}
-                        className="flex items-center gap-1 sm:gap-2 text-slate-500 hover:text-slate-900 font-semibold text-xs sm:text-sm transition-colors"
-                    >
-                        <ArrowLeft size={18} /> <span className="hidden sm:inline">Back</span>
-                    </button>
-                    <div className="text-center px-2">
-                        <p className="text-xs sm:text-sm font-black text-slate-900 leading-tight">{activeQuiz.title}</p>
-                        <p className="text-[10px] sm:text-xs text-slate-400 font-medium">{answeredCount}/{activeQuiz.questions.length} answered</p>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setActiveQuiz(null)}
+                            className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all hover:bg-slate-200 shadow-sm"
+                        >
+                            <ArrowLeft size={18} />
+                        </button>
+                        <div className="hidden sm:block h-6 w-px bg-slate-200 mx-2" />
+                        <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight truncate max-w-[120px] sm:max-w-[250px]">
+                                    {isTranslating ? 'Translating...' : (translatedQuiz?.title || activeQuiz.title)}
+                                </h2>
+                                {(activeQuiz.title.includes('Local') || translatedQuiz?.isLocal) && (
+                                    <span className="px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 text-[8px] font-black uppercase tracking-tighter">Local</span>
+                                )}
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">
+                                {answeredCount}/{activeQuiz.questions.length} answered
+                            </p>
+                        </div>
                     </div>
-                    <div className="w-16 sm:w-20 h-2 sm:h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }}></div>
+
+                    <div className="flex items-center gap-3">
+                        {i18n.language !== 'en' && (
+                            <button 
+                                onClick={() => handleTranslateQuiz(activeQuiz)}
+                                disabled={isTranslating}
+                                className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center hover:bg-emerald-500/20 transition-all disabled:opacity-50 border border-emerald-500/20"
+                                title="Force Translate"
+                            >
+                                {isTranslating ? <Loader2 size={18} className="animate-spin" /> : <Languages size={18} />}
+                            </button>
+                        )}
+                        <InternalLanguageSelector />
                     </div>
                 </div>
 
@@ -181,7 +290,14 @@ const QuizTaker = () => {
                                         {qIndex + 1}
                                     </span>
                                     <div className="flex-1 text-lg font-bold text-slate-900 leading-snug pt-1">
-                                        <MathJaxRenderer content={q.questionText} />
+                                        {isTranslating ? (
+                                            <div className="space-y-2">
+                                                <div className="h-4 bg-slate-100 animate-pulse rounded w-full" />
+                                                <div className="h-4 bg-slate-100 animate-pulse rounded w-3/4" />
+                                            </div>
+                                        ) : (
+                                            <MathJaxRenderer content={translatedQuiz?.questions?.[qIndex]?.questionText || q.questionText} />
+                                        )}
                                     </div>
                                     <button
                                         onClick={() => setFlagInput(prev => ({ reason: '', open: prev.open === qIndex ? null : qIndex }))}
@@ -244,7 +360,11 @@ const QuizTaker = () => {
                                                 {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
                                             </div>
                                             <span className={`text-sm font-semibold ${isSelected ? 'text-indigo-800' : 'text-slate-700'}`}>
-                                                <MathJaxRenderer content={opt} />
+                                                {isTranslating ? (
+                                                    <div className="h-3 bg-slate-100 animate-pulse rounded w-24" />
+                                                ) : (
+                                                    <MathJaxRenderer content={translatedQuiz?.questions?.[qIndex]?.options?.[oIndex] || opt} />
+                                                )}
                                             </span>
                                         </button>
                                     );
@@ -305,7 +425,7 @@ const QuizTaker = () => {
                         {quizzes.map((quiz, i) => (
                             <div key={quiz._id} className="group relative rounded-[2rem] overflow-hidden shadow-lg h-72 cursor-pointer" onClick={() => startQuiz(quiz)}>
                                 <img
-                                    src={SUBJECT_IMAGES[i % SUBJECT_IMAGES.length]}
+                                    src={getThumbnail(quiz.subject?.thumbnail) || SUBJECT_IMAGES[i % SUBJECT_IMAGES.length]}
                                     alt={quiz.title}
                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                 />

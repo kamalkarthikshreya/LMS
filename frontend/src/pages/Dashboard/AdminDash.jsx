@@ -92,7 +92,8 @@ const AdminDash = ({ currentView = 'overview' }) => {
     // --- Derived chart data from real API data ---
     const studentCount = users.filter(u => u.role === 'STUDENT').length;
     const instructorCount = users.filter(u => u.role === 'INSTRUCTOR').length;
-    const adminCount = users.filter(u => u.role === 'ADMIN').length;
+    const adminCount = users.filter(u => u.role === 'ADMIN' || u.role === 'IT_ADMIN').length;
+    const itAdminCount = users.filter(u => u.role === 'IT_ADMIN').length;
     const activeCount = users.filter(u => u.status === 'ACTIVE').length;
     const inactiveCount = users.filter(u => u.status === 'INACTIVE').length;
 
@@ -155,7 +156,7 @@ const AdminDash = ({ currentView = 'overview' }) => {
                         <option value="">-- Choose a subject --</option>
                         {subjects.map(s => (
                             <option key={s._id || s.id} value={s._id || s.id}>
-                                {s.title || s.subject_name}{s.instructorId ? ' (already assigned)' : ''}
+                                [{s.category || 'General'}] {s.title || s.subject_name}{s.instructorId ? ' (already assigned)' : ''}
                             </option>
                         ))}
                     </select>
@@ -212,6 +213,8 @@ const AdminDash = ({ currentView = 'overview' }) => {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         {u.role === 'ADMIN' ? (
                                             <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 px-3 py-1.5 bg-indigo-500/10 rounded-full border border-indigo-500/20">System Admin</span>
+                                        ) : u.role === 'IT_ADMIN' ? (
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 px-3 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">IT Admin</span>
                                         ) : (
                                             <select
                                                 value={u.role}
@@ -220,6 +223,7 @@ const AdminDash = ({ currentView = 'overview' }) => {
                                             >
                                                 <option value="STUDENT">Student</option>
                                                 <option value="INSTRUCTOR">Instructor</option>
+                                                <option value="IT_ADMIN">IT Admin</option>
                                             </select>
                                         )}
                                     </td>

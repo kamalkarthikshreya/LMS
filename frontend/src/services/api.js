@@ -22,4 +22,11 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+export const getThumbnail = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '');
+    return `${baseUrl}${url}`;
+};
+
 export default api;

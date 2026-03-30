@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import { ArrowLeft, Save, Plus, Trash2, Video, FileText, BookOpen, FileQuestion, CheckCircle2, Pencil, X, Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const SubjectEditor = () => {
     const { id } = useParams();
@@ -11,6 +12,7 @@ const SubjectEditor = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'quizzes' ? 'quizzes' : 'curriculum');
+    const { t, i18n } = useTranslation();
 
     // Quiz state
     const [quizzes, setQuizzes] = useState([]);
@@ -26,6 +28,7 @@ const SubjectEditor = () => {
     );
     const [submittingQuiz, setSubmittingQuiz] = useState(false);
     const [editingQuizId, setEditingQuizId] = useState(null); // null = create mode, id = edit mode
+    const [generatingAi, setGeneratingAi] = useState(false);
 
     const handleNumQuestionsChange = (n) => {
         const val = Math.max(1, Math.min(50, n));
@@ -255,6 +258,56 @@ const SubjectEditor = () => {
         }
     };
 
+    const handleGenerateAiQuiz = async () => {
+        if (!confirm('This will use AI to analyze the curriculum and generate a quiz. Continue?')) return;
+        setGeneratingAi(true);
+        try {
+            const { data } = await api.post(`/quizzes/generate/${id}`, { targetLang: i18n.language });
+            alert('AI Quiz generated successfully!');
+            setQuizzes(prev => [...prev, data.quiz]);
+        } catch (error) {
+            console.error('AI Quiz Error:', error);
+            const msg = error.response?.data?.message || error.message || 'Unknown Error';
+            
+            if (msg.includes('CONFIG_ERROR')) {
+                alert('⚠️ AI CONFIGURATION ERROR:\n\nPlease add your API Key to backend/.env file to enable this feature.');
+            } else {
+                alert(`Assessment Error: ${msg}`);
+            }
+        } finally {
+            setGeneratingAi(false);
+        }
+    };
+
+    const handleGenerateAiPaper = async () => {
+        setGeneratingAi(true);
+        try {
+            const { data } = await api.post(`/quizzes/generate-paper/${id}`, { targetLang: i18n.language });
+            const win = window.open('', '_blank');
+            win.document.write(`
+                <html>
+                    <head><title>${data.title}</title><style>body{font-family:sans-serif;padding:40px;line-height:1.6;max-width:800px;margin:auto;}</style></head>
+                    <body>
+                        <h1>${data.title}</h1>
+                        <pre style="white-space: pre-wrap;">${data.content}</pre>
+                        <button onclick="window.print()" style="margin-top:20px;padding:10px 20px;">Print Paper</button>
+                    </body>
+                </html>
+            `);
+            win.document.close();
+        } catch (error) {
+            console.error('AI Paper Error:', error);
+            const msg = error.response?.data?.message || '';
+            if (msg.includes('CONFIG_ERROR')) {
+                alert('⚠️ AI CONFIGURATION ERROR:\n\nPlease add your OpenAI API Key to backend/.env file to enable this feature.');
+            } else {
+                alert(msg || 'Failed to generate question paper.');
+            }
+        } finally {
+            setGeneratingAi(false);
+        }
+    };
+
     if (loading) return <div className="p-8 text-center text-slate-500">Loading editor...</div>;
     if (!subject) return <div className="p-8 text-center text-red-500">Subject not found.</div>;
 
@@ -266,13 +319,36 @@ const SubjectEditor = () => {
                     <button onClick={() => navigate('/dashboard')} className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all shadow-xl">
                         <ArrowLeft size={22} />
                     </button>
-                    <div className="min-w-0">
-                        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Curriculum Studio</h1>
-                        <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">{subject.title}</p>
+                    <div className="flex flex-col">
+                        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none uppercase">
+                             Curriculum Studio
+                        </h1>
+                        <div className="flex items-center gap-2 mt-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Program:</span>
+                            <select 
+                                value={subject.category || 'General'}
+                                onChange={(e) => setSubject({...subject, category: e.target.value})}
+                                className="bg-indigo-500/10 border border-indigo-500/30 rounded-lg text-[10px] font-black uppercase tracking-widest px-3 py-1.5 outline-none text-indigo-400 focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer hover:bg-indigo-500/20 shadow-lg shadow-indigo-500/5"
+                            >
+                                <option value="BSc" className="bg-surface-900 border-none">B.Sc Science</option>
+                                <option value="BCA" className="bg-surface-900 border-none">BCA (Apps)</option>
+                                <option value="BE" className="bg-surface-900 border-none">B.E Engineering</option>
+                                <option value="General" className="bg-surface-900 border-none">General</option>
+                            </select>
+                            <span className="h-4 w-px bg-white/10 mx-2"></span>
+                            <p className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest">{subject.title}</p>
+                        </div>
                     </div>
                 </div>
                 {activeTab === 'curriculum' && (
-                    <button onClick={handleSave} disabled={saving} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-3.5 rounded-2xl shadow-2xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2">
+                    <button onClick={async () => {
+                        setSaving(true);
+                        try {
+                            await api.put(`/subjects/${id}`, { units: subject.units, category: subject.category });
+                            alert('Subject curriculum and category saved!');
+                        } catch (err) { alert('Save failed'); }
+                        finally { setSaving(false); }
+                    }} disabled={saving} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-3.5 rounded-2xl shadow-2xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2">
                         <Save size={18} /> {saving ? 'Saving...' : 'Publish Changes'}
                     </button>
                 )}
@@ -404,6 +480,34 @@ const SubjectEditor = () => {
             {/* QUIZZES TAB */}
             {activeTab === 'quizzes' && (
                 <div className="space-y-8">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 bg-surface-900 overflow-hidden rounded-[2rem] border border-indigo-500/20 shadow-2xl">
+                        <div className="flex-1 p-8">
+                            <h3 className="text-lg font-black text-white mb-2 uppercase tracking-tight">Generate Smarter Assessments</h3>
+                            <p className="text-sm text-slate-500 font-bold mb-6">Use AI to analyze your curriculum and automatically create validated MCQs or formal question papers.</p>
+                            <div className="flex flex-wrap gap-4">
+                                <button
+                                    onClick={handleGenerateAiQuiz}
+                                    disabled={generatingAi}
+                                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black uppercase tracking-widest px-6 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+                                >
+                                    {generatingAi ? 'Analyzing curriculum...' : 'Generate AI Quiz'}
+                                </button>
+                                <button
+                                    onClick={handleGenerateAiPaper}
+                                    disabled={generatingAi}
+                                    className="bg-white/5 hover:bg-white/10 text-white text-xs font-black uppercase tracking-widest px-6 py-3 rounded-xl transition-all border border-white/10 disabled:opacity-50"
+                                >
+                                    {generatingAi ? 'Drafting...' : 'Generate AI Paper'}
+                                </button>
+                            </div>
+                        </div>
+                        <div className="w-full sm:w-64 h-48 sm:h-auto bg-gradient-to-br from-indigo-500 to-emerald-500 opacity-20 relative">
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <FileQuestion size={80} className="text-white opacity-20" />
+                            </div>
+                        </div>
+                    </div>
+
                     {quizzes.length > 0 && (
                         <div className="space-y-4">
                             <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Global Assessments</h3>
