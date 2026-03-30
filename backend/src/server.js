@@ -19,6 +19,7 @@ const flagRoutes = require('./routes/flagRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const glitchRoutes = require('./routes/glitchRoutes');
 const path = require('path');
 
 const app = express();
@@ -100,6 +101,7 @@ app.use('/api/flags', flagRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/glitches', glitchRoutes);
 
 const PORT = process.env.PORT || 5000;
 
