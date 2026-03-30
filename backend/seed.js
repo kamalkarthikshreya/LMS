@@ -1,116 +1,98 @@
 require('dotenv').config();
-const mongoose = require('mongoose');
+const { sequelize } = require('./src/config/db');
+const { User, Subject, Enrollment, ActivityLog } = require('./src/models');
 const bcrypt = require('bcrypt');
-
-// Load Models
-const User = require('./src/models/User');
-const Subject = require('./src/models/Subject');
-const Enrollment = require('./src/models/Enrollment');
+const fs = require('fs');
 
 const seedDB = async () => {
     try {
-        console.log('Connecting to database...');
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/lms_db');
-        console.log('Connected.');
+        console.log('🚀 Connecting to PostgreSQL and Syncing Tables...');
+        await sequelize.sync({ force: true });
+        console.log('✅ Tables Synchronized.');
 
-        console.log('Clearing existing data...');
-        await User.deleteMany({});
-        await Subject.deleteMany({});
-        await Enrollment.deleteMany({});
-
-        console.log('Creating users...');
+        console.log('👥 Creating users...');
         const passwordHash = await bcrypt.hash('password123', 10);
 
-        const admin = await User.create({
-            name: 'Admin User',
+        // --- Admins ---
+        await User.create({
+            userId: 'ADM001',
+            name: 'System Admin',
             email: 'admin@lms.com',
             password: passwordHash,
             role: 'ADMIN',
-            status: 'ACTIVE'
+            status: 'ACTIVE',
+            isVerified: true
         });
 
-        const instructor = await User.create({
-            name: 'Dr. Smith',
-            email: 'instructor@lms.com',
-            password: passwordHash,
-            role: 'INSTRUCTOR',
-            status: 'ACTIVE'
+        // --- Instructors ---
+        const instructors = await Promise.all([
+            User.create({ userId: 'INS001', name: 'Dr. Sarah Smith', email: 'sarah@lms.com', password: passwordHash, role: 'INSTRUCTOR', status: 'ACTIVE', isVerified: true }),
+            User.create({ userId: 'INS002', name: 'Prof. James Wilson', email: 'james@lms.com', password: passwordHash, role: 'INSTRUCTOR', status: 'ACTIVE', isVerified: true }),
+            User.create({ userId: 'INS003', name: 'Dr. Emily Chen', email: 'instructor@lms.com', password: passwordHash, role: 'INSTRUCTOR', status: 'ACTIVE', isVerified: true })
+        ]);
+
+        // --- Students ---
+        const studentNames = ['Alice Johnson', 'Bob Miller', 'Charlie Davis', 'Diana Prince', 'Ethan Hunt', 'Fiona Gallagher', 'George Costanza', 'Hannah Abbott', 'Ian Wright', 'Jenny Slate'];
+        const students = await Promise.all(studentNames.map((name, i) => 
+            User.create({
+                userId: `STU${String(i + 1).padStart(3, '0')}`,
+                name,
+                email: i === 0 ? 'student@lms.com' : `${name.toLowerCase().replace(' ', '.')}@example.com`,
+                password: passwordHash,
+                role: 'STUDENT',
+                status: 'ACTIVE',
+                isVerified: true
+            })
+        ));
+
+        console.log('📚 Creating subjects...');
+        const physics = await Subject.create({
+            title: 'Quantum Mechanics 101',
+            subject_name: 'Physics',
+            description: 'Introduction to wave functions and quantum states.',
+            instructorId: instructors[0].id,
+            thumbnail: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800&q=80',
+            units: []
         });
 
-        const student = await User.create({
-            name: 'Test Student',
-            email: 'student@lms.com',
-            password: passwordHash,
-            role: 'STUDENT',
-            status: 'ACTIVE'
+        const math = await Subject.create({
+            title: 'Advanced Linear Algebra',
+            subject_name: 'Mathematics',
+            description: 'Vector spaces, eigenvalues, and transformations.',
+            instructorId: instructors[1].id,
+            thumbnail: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=800&q=80',
+            units: []
         });
 
-        console.log('Creating subject with video and AI-readable text...');
-        // Let's use a nice YouTube video for the demo - MIT OCW or similar educational video
-        const physicsCourse = await Subject.create({
-            title: 'Introduction to Quantum Mechanics',
-            description: 'Explore the fundamental principles of quantum mechanics, including wave-particle duality, the Schrödinger equation, and quantum entanglement in this comprehensive interactive course.',
-            instructorId: instructor._id,
-            thumbnail: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-            units: [
-                {
-                    unitNumber: 1,
-                    title: 'Wave Mechanics',
-                    chapters: [
-                        {
-                            chapterNumber: 1,
-                            title: 'The Schrödinger Equation',
-                            sections: [
-                                {
-                                    sectionNumber: 1,
-                                    title: 'Introduction and The Wave Function',
-                                    videoUrl: 'https://www.youtube.com/embed/lZ3bPUKo5zc', // MIT OCW Quantum Mechanics intro
-                                    paragraphs: [
-                                        'Welcome to the beginning of your journey into Quantum Mechanics. The video above provides an overview of the concepts we will cover.',
-                                        'In classical mechanics, the state of a system is described by the positions and momenta of its particles. In quantum mechanics, the state is completely described by its wave function, $\\Psi(x,t)$.',
-                                        'The probability of finding the particle between $x$ and $x + dx$ at time $t$ is given by $|\\Psi(x,t)|^2 dx$. This implies that the wave function must be normalized: $\\int_{-\\infty}^{\\infty} |\\Psi(x,t)|^2 dx = 1$.',
-                                        'The time evolution of the wave function is governed by the time-dependent Schrödinger equation:',
-                                        '$$ i\\hbar \\frac{\\partial \\Psi}{\\partial t} = \\hat{H} \\Psi $$',
-                                        'where $\\hat{H}$ is the Hamiltonian operator, representing the total energy (kinetic + potential) of the system.',
-                                        'If you have any questions about the nature of the wave function or the Schrödinger equation, just ask the AI Chat button in the bottom right corner!'
-                                    ]
-                                },
-                                {
-                                    sectionNumber: 2,
-                                    title: 'Particle in a Box',
-                                    paragraphs: [
-                                        'One of the simplest quantum systems is a particle confined to a one-dimensional box of length $L$ with infinitely high, rigid walls.',
-                                        'Inside the box ($0 < x < L$), the potential energy $V(x) = 0$. Outside, $V(x) = \\infty$. This means the particle must possess a zero probability of being found outside the box.',
-                                        'Solving the time-independent Schrödinger equation yields the energy levels: $E_n = \\frac{n^2 \\pi^2 \\hbar^2}{2mL^2}$, where $n = 1, 2, 3, \\dots$',
-                                        'This demonstrates the phenomenon of energy quantization – the particle can only exist in specific, discrete energy states.'
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        });
+        console.log('🔗 Enrolling students...');
+        await Promise.all(students.map((student, i) => 
+            Enrollment.create({
+                studentId: student.id,
+                subjectId: i % 2 === 0 ? physics.id : math.id,
+                progressPointer: { unit: 0, chapter: 0, section: 0 },
+                percentageCompleted: Math.floor(Math.random() * 100)
+            })
+        ));
 
-        console.log('Enrolling student in the course...');
-        await Enrollment.create({
-            studentId: student._id,
-            subjectId: physicsCourse._id,
-            progressPointer: { unit: 0, chapter: 0, section: 0 },
-            percentageCompleted: 15
-        });
+        console.log('📊 Generating activity logs...');
+        await Promise.all(students.slice(0, 5).map(student => 
+            ActivityLog.create({
+                userId: student.id,
+                loginTime: new Date(Date.now() - Math.random() * 10000000),
+                logoutTime: new Date(),
+                durationSeconds: Math.floor(Math.random() * 3600)
+            })
+        ));
 
-        console.log('==============================================');
-        console.log('SEEDING SUCCESSFUL!');
-        console.log('You can now log in with the following test accounts:');
-        console.log('Student: student@lms.com / password123');
-        console.log('Instructor: instructor@lms.com / password123');
-        console.log('Admin: admin@lms.com / password123');
-        console.log('==============================================');
+        console.log('\n' + '='.repeat(40));
+        console.log('🎉 COMPREHENSIVE SEEDING SUCCESSFUL');
+        console.log(`- 1 Admin\n- ${instructors.length} Instructors\n- ${students.length} Students`);
+        console.log('='.repeat(40));
         process.exit(0);
 
     } catch (error) {
-        console.error('Seeding error:', error);
+        const errorLog = `Error: ${error.message}\nStack: ${error.stack}`;
+        fs.writeFileSync('seed_error.log', errorLog);
         process.exit(1);
     }
 };

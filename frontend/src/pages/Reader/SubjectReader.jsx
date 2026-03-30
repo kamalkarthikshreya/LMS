@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import api, { getThumbnail } from '../../services/api';
 import { ChevronLeft, ChevronRight, Book, ArrowLeft, MessageSquare, Menu, X } from 'lucide-react';
 import MathJaxRenderer from '../../components/renderers/MathJaxRenderer';
 import SpiceRenderer from '../../components/renderers/SpiceRenderer';
 import AiChatbox from '../../components/chat/AiChatbox';
 import ChatBot from '../../components/ChatBot';
+import { useTranslation } from 'react-i18next';
+import { Languages, Loader2 } from 'lucide-react';
 
 // Converts any YouTube URL format to the embed URL required by iframes
 const toEmbedUrl = (url) => {
@@ -41,9 +43,20 @@ const SubjectReader = () => {
     const [currentChapterIdx, setCurrentChapterIdx] = useState(0);
     const [currentSectionIdx, setCurrentSectionIdx] = useState(0);
 
+    const { t, i18n } = useTranslation();
+    const [translatedParagraphs, setTranslatedParagraphs] = useState(null);
+    const [isTranslating, setIsTranslating] = useState(false);
+
     useEffect(() => {
         fetchSubjectAndProgress();
-    }, [id]);
+        setTranslatedParagraphs(null);
+    }, [id, currentSectionIdx]);
+
+    useEffect(() => {
+        if (i18n.language !== 'en' && subject) {
+            handleTranslate();
+        }
+    }, [i18n.language, currentUnitIdx, currentChapterIdx, currentSectionIdx, subject]);
 
     const fetchSubjectAndProgress = async () => {
         try {
@@ -130,6 +143,32 @@ const SubjectReader = () => {
         setCurrentSectionIdx(s);
         saveProgress(u, c, s);
         window.scrollTo(0, 0);
+    };
+
+    const handleTranslate = async () => {
+        if (!currentSection || isTranslating) {
+            if (translatedParagraphs) setTranslatedParagraphs(null);
+            return;
+        }
+        
+        if (translatedParagraphs) {
+            setTranslatedParagraphs(null);
+            return;
+        }
+
+        setIsTranslating(true);
+        try {
+            const res = await api.post('/ai/translate', {
+                text: currentSection.paragraphs.join('\n\n'),
+                targetLang: i18n.language
+            });
+            setTranslatedParagraphs(res.data.translatedText.split('\n\n'));
+        } catch (error) {
+            console.error('Translation failed', error);
+            alert('AI Translation failed. Please try again.');
+        } finally {
+            setIsTranslating(false);
+        }
     };
 
     if (loading) return <div className="min-h-screen pt-20 text-center text-slate-500">Loading textbook content...</div>;
@@ -238,6 +277,17 @@ const SubjectReader = () => {
                                     <span className="inline-flex items-center px-4 py-1.5 rounded-full text-[10px] lg:text-xs font-black uppercase tracking-widest bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 mb-4 lg:mb-6">
                                         Unit {currentUnit?.unitNumber || currentUnitIdx + 1} • Chapter {currentChapter?.chapterNumber || currentChapterIdx + 1}
                                     </span>
+
+                                    {i18n.language !== 'en' && (
+                                        <button 
+                                            onClick={handleTranslate}
+                                            disabled={isTranslating}
+                                            className="ml-4 inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] lg:text-xs font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all disabled:opacity-50"
+                                        >
+                                            {isTranslating ? <Loader2 size={12} className="animate-spin" /> : <Languages size={12} />}
+                                            {translatedParagraphs ? 'Show English' : t('translate')}
+                                        </button>
+                                    )}
                                     <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white leading-tight tracking-tighter drop-shadow-2xl">
                                         {currentSection?.title || 'Untitled Section'}
                                     </h1>
@@ -279,7 +329,7 @@ const SubjectReader = () => {
                                                 <div key={i} className="my-16 animate-fade-in-up group cursor-zoom-in">
                                                     <div className="relative rounded-[2rem] overflow-hidden shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] transition-all duration-700 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)]">
                                                         <img
-                                                            src={imgUrl}
+                                                            src={getThumbnail(imgUrl)}
                                                             alt="Educational Concept"
                                                             className="w-full h-auto object-cover max-h-[600px] transition-transform duration-700 group-hover:scale-105"
                                                         />

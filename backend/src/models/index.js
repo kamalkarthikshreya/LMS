@@ -6,6 +6,7 @@ const Enrollment = require('./Enrollment');
 const Flag = require('./Flag');
 const Counter = require('./Counter');
 const ActivityLog = require('./ActivityLog');
+const Glitch = require('./Glitch');
 
 // --- Associations ---
 
@@ -40,4 +41,8 @@ Flag.belongsTo(Quiz, { foreignKey: 'quizId', as: 'quiz' });
 User.hasMany(Flag, { foreignKey: 'studentId' });
 Quiz.hasMany(Flag, { foreignKey: 'quizId' });
 
-module.exports = { User, Subject, Quiz, Result, Enrollment, Flag, Counter, ActivityLog };
+// Glitch belongs to User
+Glitch.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+User.hasMany(Glitch, { foreignKey: 'userId' });
+
+module.exports = { User, Subject, Quiz, Result, Enrollment, Flag, Counter, ActivityLog, Glitch };

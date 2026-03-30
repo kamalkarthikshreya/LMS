@@ -31,7 +31,8 @@ const createQuiz = async (req, res) => {
 const getSubjectQuizzes = async (req, res) => {
     try {
         const quizzes = await Quiz.findAll({
-            where: { subjectId: req.params.subjectId }
+            where: { subjectId: req.params.subjectId },
+            include: [{ model: Subject, as: 'subject', attributes: ['thumbnail', 'title'] }]
         });
 
         // Instructors/Admins get full data; students get answers stripped

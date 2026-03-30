@@ -1,8 +1,7 @@
-const { OpenAI } = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+require('dotenv').config();
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY || 'dummy_key',
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'no_key');
 
 const RAG_BASE_URL = 'https://rag-new-ajd8.onrender.com';
 
@@ -29,14 +28,11 @@ const extractiveAnswer = async (context, question) => {
     // Fallback to Wikipedia for general knowledge using 2-step search
     const fetchWikipedia = async (searchTerm) => {
         try {
-            // Step 1: Search Wikipedia to resolve typos/acronyms (e.g. "rdms") to exact articles (e.g. "RDBMS")
             const searchRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerm)}&utf8=&format=json&origin=*`);
             if (searchRes.ok) {
                 const searchData = await searchRes.json();
                 if (searchData.query && searchData.query.search && searchData.query.search.length > 0) {
                     const bestTitle = searchData.query.search[0].title;
-                    
-                    // Step 2: Fetch the summary of the exact matched title
                     const summaryRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(bestTitle)}`);
                     if (summaryRes.ok) {
                         const summaryData = await summaryRes.json();
@@ -55,11 +51,9 @@ const extractiveAnswer = async (context, question) => {
     }
 
     if (!context || context.trim().length < 10) {
-        // No course text (e.g., video-only section) -> rely entirely on Wikipedia
         return await fetchWikipedia(qKeywords.join(' '));
     }
 
-    // Split context into sentences
     const sentences = context
         .replace(/([.!?])\s+/g, '$1\n')
         .split('\n')
@@ -70,180 +64,189 @@ const extractiveAnswer = async (context, question) => {
         return await fetchWikipedia(qKeywords.join(' '));
     }
 
-    // Score each sentence by keyword overlap + boost for longer, richer sentences
     const scored = sentences.map((sentence, idx) => {
         const sWords = extractKeywords(sentence);
         const matchCount = qKeywords.filter(kw =>
             sWords.some(sw => sw.includes(kw) || kw.includes(sw))
         ).length;
         const score = matchCount * 2 + sWords.length * 0.1 - idx * 0.05;
-        return { sentence, score };
+        return { sentence, score, matchCount };
     });
 
     scored.sort((a, b) => b.score - a.score);
-    const topSentences = scored.slice(0, 3).filter(s => s.score > 0).map(s => s.sentence);
+    const topSentences = scored
+        .filter(s => s.matchCount > 0)
+        .slice(0, 3)
+        .map(s => s.sentence);
 
     if (topSentences.length === 0) {
-        // If course material has text but doesn't mention this topic, check Wikipedia
         return await fetchWikipedia(qKeywords.join(' '));
     }
 
     return topSentences.join(' ');
 };
-// ─────────────────────────────────────────────────────────────────────────────
 
 // @desc    Ask a question contextually locked to subject section
 // @route   POST /api/ai/ask
 // @access  Private/Student
 const askContextualQuestion = async (req, res) => {
     try {
-        const { subjectId, context, query, history = [] } = req.body;
+        const { query, context, history = [] } = req.body;
 
-        if (!query) {
-            return res.status(400).json({ message: 'Query is required' });
+        const hasKey = process.env.GEMINI_API_KEY && !process.env.GEMINI_API_KEY.includes('AIzaSy');
+
+        if (!hasKey) {
+            console.warn('AI Chat: No API Key. Using extractive fallback.');
+            const answer = await extractiveAnswer(context || '', query);
+            return res.json({ 
+                answer, 
+                isLocal: true,
+                message: 'Local Mode: Using course-direct retrieval.'
+            });
         }
 
-        const cleanContext = (context || '')
-            .replace(/\[IMG\].*?(\n|$)/g, '')
-            .replace(/\[PDF\].*?(\n|$)/g, '')
-            .replace(/\[SPICE\].*?(\n|$)/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-
-        if (!process.env.OPENAI_API_KEY) {
-            let contextualQuery = query;
-            const currentKeywords = extractKeywords(query);
-            
-            const isShortFollowUp = currentKeywords.length <= 1 && history.length > 0;
-            
-            if (isShortFollowUp) {
-                const userMsgs = history.filter(m => m.role === 'user');
-                if (userMsgs.length > 0) {
-                    const lastMsg = userMsgs[userMsgs.length - 1].content;
-                    contextualQuery = `${lastMsg} ${query}`;
-                }
-            }
-            
-            let answer = await extractiveAnswer(cleanContext, contextualQuery);
-            
-            if (isShortFollowUp && answer.includes('[General Knowledge')) {
-                const topicKeywords = extractKeywords(contextualQuery);
-                if (topicKeywords.length > 0) {
-                    try {
-                        const searchRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(topicKeywords.join(' '))}&utf8=&format=json&origin=*`);
-                        if (searchRes.ok) {
-                            const searchData = await searchRes.json();
-                            if (searchData.query?.search?.length > 0) {
-                                const bestTitle = searchData.query.search[0].title;
-                                const extractRes = await fetch(
-                                    `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(bestTitle)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*&redirects=1`
-                                );
-                                if (extractRes.ok) {
-                                    const extractData = await extractRes.json();
-                                    const pages = extractData.query?.pages;
-                                    if (pages) {
-                                        const page = Object.values(pages)[0];
-                                        if (page?.extract?.length > 50) {
-                                            answer = `[${page.title} - Explained]: ${page.extract}`;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } catch (e) { /* use original answer */ }
-                }
-            }
-            
-            return res.json({ answer });
-        }
-
-        if (!cleanContext && (!history || history.length === 0)) {
-            return res.status(400).json({ message: 'No context provided for this query.' });
-        }
-
-        const systemPrompt = `You are a helpful and knowledgeable teaching assistant for a college-level course. 
-Your goal is to help students understand the course material effectively.
-
-Primary Instructions:
-1. Use the provided "Course Context" to answer the student's question.
-2. If the answer is in the context, synthesize it clearly and concisely.
-3. If the context is missing specific details, use your general knowledge to provide a helpful, scientifically accurate explanation that complements the course topic.
-4. If you use outside knowledge, frame it as "In addition to the course material..." or "Broadly speaking...".
-5. Keep your tone encouraging, professional, and academic.
-
-Course Context:
-${cleanContext}
-`;
-
-        const chatHistory = history.map(m => ({
-            role: m.role,
-            content: String(m.content)
-        }));
-
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                ...chatHistory,
-                { role: 'user', content: query }
-            ],
-            temperature: 0.1,
-            max_tokens: 300,
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const chat = model.startChat({ 
+            history: history.map(m => ({
+                role: m.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: String(m.content) }],
+            }))
         });
 
-        res.json({ answer: response.choices[0].message.content });
+        const result = await chat.sendMessage(query);
+        const response = await result.response;
+        const text = response.text();
+
+        res.json({ answer: text });
     } catch (error) {
-        console.error('OpenAI Error:', error);
-        res.status(500).json({ message: 'Failed to process AI request. Make sure OPENAI_API_KEY is valid.' });
+        console.error('AI Chat Error:', error.message);
+        const answer = await extractiveAnswer(req.body.context || '', req.body.query);
+        res.json({ answer, isFallback: true });
     }
 };
 
-// @desc    Proxy: Ask RAG chatbot a question (bypasses browser CORS)
-// @route   POST /api/ai/rag-ask
-// @access  Private/Student
 const ragAsk = async (req, res) => {
     try {
-        console.log('RAG Proxy Request:', JSON.stringify(req.body));
         const response = await fetch(`${RAG_BASE_URL}/ask`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(req.body),
         });
-
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
-            console.log('RAG Proxy Success:', data);
-            return res.status(response.status).json(data);
-        } else {
-            const text = await response.text();
-            console.error('RAG Proxy Non-JSON Response:', text);
-            return res.status(response.status).json({ answer: 'Error: RAG server returned non-JSON response.', details: text });
-        }
+        const data = await response.json();
+        return res.json(data);
     } catch (error) {
-        console.error('RAG ask proxy error:', error);
-        res.status(500).json({ answer: 'Error connecting to RAG service.', error: error.message });
+        res.status(500).json({ answer: 'Error connecting to RAG service.' });
     }
 };
 
-// @desc    Proxy: Trigger RAG database reload after content update (bypasses browser CORS)
-// @route   POST /api/ai/rag-reload
-// @access  Private/Instructor
+// ─── Local Translation Dictionary (DEMO MODE) ─────────────────────────────
+const HARDCODED_TRANSLATIONS = {
+    'kn': {
+        "Newtonian Mechanics Quiz": "ನ್ಯೂಟೋನಿಯನ್ ಮೆಕ್ಯಾನಿಕ್ಸ್ ರಸಪ್ರಶ್ನೆ",
+        "What is the formula for Force according to Newton's Second Law?": "ನ್ಯೂಟನ್ ಅವರ ಎರಡನೇ ನಿಯಮದ ಪ್ರಕಾರ ಬಲದ ಸೂತ್ರ ಯಾವುದು?",
+        "Newton's second law states that Force is the product of mass and acceleration.": "ಬಲವು ದ್ರವ್ಯರಾಶಿ ಮತ್ತು ವೇಗವರ್ಧನೆಯ ಗುಣಲಬ್ಧವಾಗಿದೆ ಎಂದು ನ್ಯೂಟನ್ ರ ಎರಡನೇ ನಿಯಮ ಹೇಳುತ್ತದೆ.",
+        "Atomic structure Quiz": "ಪರಮಾಣು ರಚನೆಯ ರಸಪ್ರಶ್ನೆ",
+        "Which particle has a negative charge?": "ಯಾವ ಕಣವು ಋಣಾತ್ಮಕ ಆವೇಶವನ್ನು ಹೊಂದಿದೆ?",
+        "Electrons carry a negative electrical charge.": "ಎಲೆಕ್ಟ್ರಾನ್ಗಳು ಋಣಾತ್ಮಕ ವಿದ್ಯುತ್ ಆವೇಶವನ್ನು ಹೊಂದಿರುತ್ತವೆ.",
+        "Proton": "ಪ್ರೋಟಾನ್",
+        "Neutron": "ನ್ಯೂಟ್ರಾನ್",
+        "Electron": "ಎಲೆಕ್ಟ್ರಾನ್",
+        "Nucleus": "ನ್ಯೂಕ್ಲಿಯಸ್"
+    },
+    'hi': {
+        "Newtonian Mechanics Quiz": "न्यूटनियन मैकेनिक्स प्रश्नोत्तरी",
+        "What is the formula for Force according to Newton's Second Law?": "न्यूटन के दूसरे नियम के अनुसार बल का सूत्र क्या है?",
+        "Atomic structure Quiz": "परमाणु संरचना प्रश्नोत्तरी",
+        "Which particle has a negative charge?": "किस कण पर ऋणात्मक आवेश होता है?",
+        "Electron": "इलेक्ट्रॉन"
+    }
+};
+
+// @desc    Translate curriculum content on-the-fly
+// @route   POST /api/ai/translate
+// @access  Private/Student
+const translateContent = async (req, res) => {
+    try {
+        const { text, targetLang, isJson } = req.body;
+
+        if (!text || !targetLang) {
+            return res.status(400).json({ message: 'Text and target language are required.' });
+        }
+
+        if (targetLang === 'en') {
+            return res.json({ translatedText: text });
+        }
+
+        // Try Hardcoded Dictionary First (for Demo subjects)
+        const dict = HARDCODED_TRANSLATIONS[targetLang];
+        if (dict) {
+            if (isJson) {
+                try {
+                    const obj = JSON.parse(text);
+                    const translateObj = (data) => {
+                        if (typeof data === 'string' && dict[data]) return dict[data];
+                        if (Array.isArray(data)) return data.map(translateObj);
+                        if (typeof data === 'object' && data !== null) {
+                            const newObj = {};
+                            for (let k in data) newObj[k] = translateObj(data[k]);
+                            return newObj;
+                        }
+                        return data;
+                    };
+                    return res.json({ translatedText: JSON.stringify(translateObj(obj), null, 2), isLocal: true });
+                } catch (e) { /* fallback to normal */ }
+            } else if (dict[text]) {
+                return res.json({ translatedText: dict[text], isLocal: true });
+            }
+        }
+
+        // If no API key, return original text blindly but safely
+        const hasKey = process.env.GEMINI_API_KEY && !process.env.GEMINI_API_KEY.includes('AIzaSy');
+        if (!hasKey) {
+            console.warn(`Local Translation: No key for ${targetLang}. Returning original.`);
+            return res.json({ translatedText: text, isLocal: true });
+        }
+
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        let prompt;
+        if (isJson) {
+            prompt = `Translate the string values in this JSON to ${targetLang}. Return ONLY valid JSON: ${text}`;
+        } else {
+            prompt = `Translate this to ${targetLang}: "${text}"`;
+        }
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        let translatedText = response.text();
+
+        if (isJson) {
+            const jsonMatch = translatedText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+            if (jsonMatch) translatedText = jsonMatch[0];
+        }
+
+        res.json({ translatedText });
+    } catch (error) {
+        res.json({ translatedText: req.body.text, isLocal: true });
+    }
+};
+
 const ragReloadDb = async (req, res) => {
     try {
-        console.log('RAG Reload Triggered');
-        const response = await fetch(`${RAG_BASE_URL}/reload-db`, { method: 'POST' });
-        const text = await response.text();
-        console.log('RAG Reload Success:', text);
-        res.status(response.status).send(text);
+        const response = await fetch(`${RAG_BASE_URL}/reload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body),
+        });
+        const data = await response.json();
+        return res.json(data);
     } catch (error) {
-        console.error('RAG reload proxy error:', error);
-        res.status(500).json({ message: 'Error triggering RAG reload.', error: error.message });
+        return res.json({ message: 'RAG reload skipped (service unavailable).' });
     }
 };
 
 module.exports = {
     askContextualQuestion,
+    translateContent,
     ragAsk,
     ragReloadDb,
 };

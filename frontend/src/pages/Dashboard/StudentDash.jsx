@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import api from '../../services/api';
+import api, { getThumbnail } from '../../services/api';
 import { BookOpen, Award, TrendingUp, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { RadialBarChart, RadialBar, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import ProfileSection from './ProfileSection';
 
 const StudentDash = ({ currentView = 'courses' }) => {
@@ -14,6 +15,8 @@ const StudentDash = ({ currentView = 'courses' }) => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const { user } = useAuth();
+    const [selectedCategory, setSelectedCategory] = useState('All');
+    const { t } = useTranslation();
 
     useEffect(() => {
         fetchData();
@@ -83,10 +86,10 @@ const StudentDash = ({ currentView = 'courses' }) => {
                         <div className="max-w-2xl">
                             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-4 backdrop-blur-md">
                                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse"></span>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">Scholar ID: {user?.userId || '001'}</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">{t('scholar_id')}: {user?.userId || '001'}</span>
                             </div>
-                            <h1 className="text-3xl lg:text-5xl font-black text-slate-900 dark:text-white leading-tight mb-3">Welcome back Master! 👋</h1>
-                            <p className="text-slate-600 dark:text-slate-400 text-sm lg:text-lg font-bold">You're currently mastering {enrollments.length} professional course{enrollments.length !== 1 ? 's' : ''}.</p>
+                            <h1 className="text-3xl lg:text-5xl font-black text-slate-900 dark:text-white leading-tight mb-3">{t('welcome')}</h1>
+                            <p className="text-slate-600 dark:text-slate-400 text-sm lg:text-lg font-bold">{t('active_courses', { count: enrollments.length })}</p>
                         </div>
                     </div>
                 </div>
@@ -94,9 +97,9 @@ const StudentDash = ({ currentView = 'courses' }) => {
                 {/* Stat Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[
-                        { label: 'Enrolled', value: enrollments.length, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-slate-200 dark:border-indigo-500/20', emoji: '📚' },
-                        { label: 'Assessments', value: results.length, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-slate-200 dark:border-emerald-500/20', emoji: '🧠' },
-                        { label: 'Avg Proficiency', value: results.length > 0 ? `${(results.reduce((a, r) => a + r.percentage, 0) / results.length).toFixed(1)}%` : '—', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-slate-200 dark:border-amber-500/20', emoji: '🏆' },
+                        { label: t('enrolled'), value: enrollments.length, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-slate-200 dark:border-indigo-500/20', emoji: '📚' },
+                        { label: t('assessments'), value: results.length, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-slate-200 dark:border-emerald-500/20', emoji: '🧠' },
+                        { label: t('proficiency'), value: results.length > 0 ? `${(results.reduce((a, r) => a + r.percentage, 0) / results.length).toFixed(1)}%` : '—', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-slate-200 dark:border-amber-500/20', emoji: '🏆' },
                     ].map((s, i) => (
                         <div key={i} className={`bg-white dark:bg-surface-850 p-8 rounded-[2rem] border ${s.border} hover:bg-slate-50 dark:hover:bg-surface-800 transition-all duration-500 shadow-xl group`}>
                             <div className={`w-14 h-14 rounded-2xl ${s.bg} flex items-center justify-center text-2xl mb-6 shadow-inner`}>{s.emoji}</div>
@@ -157,12 +160,31 @@ const StudentDash = ({ currentView = 'courses' }) => {
         );
     };
 
+
+
     const renderCourses = () => (
         <div className="space-y-10 animate-fade-in-up">
-            <div>
-                <h2 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-6 flex items-center gap-3">
-                    <span className="w-8 h-[2px] bg-indigo-500/30"></span> Continuing Education
-                </h2>
+            <div className="pt-4 pb-2 border-b border-indigo-500/10 mb-8">
+                <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <h2 className="text-sm font-black uppercase tracking-[0.25em] text-indigo-500/80 mb-1 flex items-center gap-4">
+                            <div className="w-12 h-1 bg-gradient-to-r from-indigo-500 to-transparent rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]"></div>
+                            {t('continuing')}
+                        </h2>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-16">Resume your academic journey</p>
+                    </div>
+                    <div className="flex gap-2">
+                        {['All', 'BSc', 'BCA', 'BE'].map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === cat ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white/5 text-slate-500 hover:text-white border border-white/5'}`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+                </div>
                 {enrollments.length === 0 ? (
                     <div className="bg-white dark:bg-surface-850 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-white/5 p-16 text-center transition-colors duration-300">
                         <BookOpen size={48} className="mx-auto text-slate-300 dark:text-slate-700 mb-4" />
@@ -170,7 +192,7 @@ const StudentDash = ({ currentView = 'courses' }) => {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {enrollments.map((enrollment, index) => {
+                        {enrollments.filter(e => selectedCategory === 'All' || e.subjectId.category === selectedCategory).map((enrollment, index) => {
                             const colors = [
                                 { border: 'border-red-400/20', bg: 'bg-red-400', accent: 'text-red-400' },
                                 { border: 'border-emerald-400/20', bg: 'bg-emerald-400', accent: 'text-emerald-400' },
@@ -182,7 +204,7 @@ const StudentDash = ({ currentView = 'courses' }) => {
                                 <div key={enrollment._id} className={`group relative rounded-[2.5rem] overflow-hidden bg-white dark:bg-surface-850 border ${theme.border} h-[440px] flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-black/50 hover:-translate-y-2`}>
                                     <div className="h-52 w-full relative overflow-hidden">
                                         <img
-                                            src={enrollment.subjectId.thumbnail || 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=800&q=80'}
+                                            src={getThumbnail(enrollment.subjectId.thumbnail)}
                                             alt={enrollment.subjectId.title}
                                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                         />
@@ -190,7 +212,14 @@ const StudentDash = ({ currentView = 'courses' }) => {
                                     </div>
 
                                     <div className="p-8 pt-2 flex flex-col flex-1">
-                                        <h3 className="font-black text-xl text-slate-900 dark:text-white mb-4 line-clamp-2 leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{enrollment.subjectId.title}</h3>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="font-black text-xl text-slate-900 dark:text-white line-clamp-2 leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{enrollment.subjectId.title}</h3>
+                                            {enrollment.subjectId.category && (
+                                                <span className="shrink-0 px-2 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black text-indigo-500 uppercase tracking-widest ml-2">
+                                                    {enrollment.subjectId.category}
+                                                </span>
+                                            )}
+                                        </div>
 
                                         <div className="mt-auto space-y-5">
                                             <div>
@@ -210,7 +239,7 @@ const StudentDash = ({ currentView = 'courses' }) => {
                                                 onClick={() => navigate(`/reader/${enrollment.subjectId._id}`)}
                                                 className="w-full bg-slate-100 dark:bg-white/5 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-slate-900 dark:text-white font-black text-xs uppercase tracking-widest px-6 py-4 rounded-2xl transition-all duration-300 border border-slate-200 dark:border-white/10 hover:border-indigo-500 hover:text-white hover:shadow-lg hover:shadow-indigo-600/20 flex justify-center items-center gap-2"
                                             >
-                                                Resume Session <ChevronRight size={14} />
+                                                {t('resume')} <ChevronRight size={14} />
                                             </button>
                                         </div>
                                     </div>
@@ -222,30 +251,41 @@ const StudentDash = ({ currentView = 'courses' }) => {
             </div>
 
             {availableSubjects.length > 0 && (
-                <div className="pt-12 border-t border-white/5">
-                    <h2 className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-8 flex items-center gap-3">
-                        <span className="w-8 h-[2px] bg-emerald-500/30"></span> Global Catalog
-                    </h2>
+                <div className="pt-20 border-t border-slate-200 dark:border-white/5 pb-20">
+                    <div className="flex flex-col mb-10">
+                        <h2 className="text-sm font-black uppercase tracking-[0.25em] text-emerald-500/80 mb-1 flex items-center gap-4">
+                            <div className="w-12 h-1 bg-gradient-to-r from-emerald-500 to-transparent rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                            {t('global_catalog')}
+                        </h2>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-16">Discover new subjects to master</p>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {availableSubjects.map(subject => (
+                        {availableSubjects.filter(s => selectedCategory === 'All' || s.category === selectedCategory).map(subject => (
                             <div key={subject._id} className="group relative rounded-[2.5rem] overflow-hidden bg-white dark:bg-surface-900 border border-slate-100 dark:border-white/5 h-[400px] flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-black/50 hover:-translate-y-2">
-                                <div className="h-48 relative">
+                                <div className="h-56 w-full relative overflow-hidden">
                                     <img
-                                        src={subject.thumbnail || 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=800&q=80'}
+                                        src={getThumbnail(subject.thumbnail)}
                                         alt={subject.title}
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100"
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-surface-900 via-white/20 dark:via-surface-900/40 to-transparent transition-colors duration-300"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-surface-950 via-transparent to-transparent"></div>
                                 </div>
 
                                 <div className="p-8 pt-0 flex flex-col flex-1 relative z-10">
-                                    <h3 className="font-black text-xl text-slate-900 dark:text-white mb-2 line-clamp-1 leading-snug">{subject.title}</h3>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="font-black text-xl text-slate-900 dark:text-white line-clamp-1 leading-snug">{subject.title}</h3>
+                                        {subject.category && (
+                                            <span className="shrink-0 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-black text-emerald-500 uppercase tracking-widest ml-2">
+                                                {subject.category}
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className="text-xs font-bold text-slate-500 mb-6 line-clamp-2 leading-relaxed">{subject.description}</p>
                                     <button
                                         onClick={() => handleEnroll(subject._id)}
                                         className="mt-auto w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl transition-all duration-300 shadow-xl shadow-indigo-600/20"
                                     >
-                                        Enroll in Program
+                                        {t('enroll')}
                                     </button>
                                 </div>
                             </div>
@@ -287,7 +327,7 @@ const StudentDash = ({ currentView = 'courses' }) => {
                             <div key={enrollment._id} className="group relative rounded-[2.5rem] overflow-hidden bg-white dark:bg-surface-850 border border-slate-100 dark:border-white/5 h-[400px] flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-black/30 hover:-translate-y-2 shadow-xl shadow-black/10 dark:shadow-black/30">
                                 <div className="h-48 relative">
                                     <img 
-                                        src={enrollment.subjectId.thumbnail || 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=800&q=80'} 
+                                        src={getThumbnail(enrollment.subjectId.thumbnail)} 
                                         alt={enrollment.subjectId.title} 
                                         className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" 
                                     />

@@ -60,7 +60,7 @@ const getSubjectById = async (req, res) => {
 // @access  Private/Instructor
 const createSubject = async (req, res) => {
     try {
-        const { title, description, units, thumbnail } = req.body;
+        const { title, description, units, thumbnail, category } = req.body;
 
         const allSubjects = await Subject.findAll({ attributes: ['title'] });
         const newTitleLower = title.trim().toLowerCase();
@@ -85,7 +85,8 @@ const createSubject = async (req, res) => {
             description: description || '',
             thumbnail: thumbnail || undefined,
             instructorId: req.user.id,
-            units: units || []
+            units: units || [],
+            category: category || 'General'
         });
 
         res.status(201).json(subject);
@@ -100,7 +101,7 @@ const createSubject = async (req, res) => {
 const updateSubject = async (req, res) => {
     console.log(`\n\n[API UPDATE SUBJECT] Received request for ID: ${req.params.id}`);
     try {
-        const { title, description, units, thumbnail, instructor_id } = req.body;
+        const { title, description, units, thumbnail, instructor_id, category } = req.body;
         console.log(`[API UPDATE SUBJECT] Units provided: ${units ? units.length : 0}`);
 
         const subject = await Subject.findByPk(req.params.id);
@@ -120,6 +121,7 @@ const updateSubject = async (req, res) => {
             subject.description = description || subject.description;
             if (thumbnail) subject.thumbnail = thumbnail;
             if (units) subject.units = units;
+            if (category) subject.category = category;
 
             // Mark JSONB as changed so Sequelize persists it
             subject.changed('units', true);

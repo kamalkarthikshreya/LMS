@@ -9,11 +9,49 @@ import AdminDash from './pages/Dashboard/AdminDash';
 import SubjectEditor from './pages/Dashboard/SubjectEditor';
 import InstructorDash from './pages/Dashboard/InstructorDash';
 import StudentDash from './pages/Dashboard/StudentDash';
+import ITAdminDash from './pages/Dashboard/ITAdminDash';
 import SubjectReader from './pages/Reader/SubjectReader';
 import QuizTaker from './pages/Assessment/QuizTaker';
 import ResultsViewer from './pages/Assessment/ResultsViewer';
+import ReportGlitchModal from './components/ReportGlitchModal';
 
-import { LogOut, Sun, Moon, Monitor, User as UserIcon, Settings, ChevronDown } from 'lucide-react';
+import { LogOut, Sun, Moon, Monitor, User as UserIcon, Settings, ChevronDown, Languages, LifeBuoy } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+
+const LanguageSelector = () => {
+  const { i18n } = useTranslation();
+  const [show, setShow] = useState(false);
+
+  const langs = [
+    { code: 'en', label: 'English' },
+    { code: 'kn', label: 'ಕನ್ನಡ' },
+    { code: 'hi', label: 'हिन्दी' },
+    { code: 'te', label: 'తెలుగు' },
+    { code: 'mr', label: 'मराठी' }
+  ];
+
+  return (
+    <div className="relative">
+      <button onClick={() => setShow(!show)} className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-400 transition-colors flex items-center gap-2">
+        <Languages size={20} className="text-indigo-400" />
+        <span className="text-[10px] font-black uppercase hidden sm:inline">{i18n.language.split('-')[0]}</span>
+      </button>
+      {show && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShow(false)}></div>
+          <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-surface-850 rounded-2xl shadow-2xl border border-slate-100 dark:border-white/5 py-2 z-50 animate-fade-in-up">
+            {langs.map(l => (
+              <button key={l.code} onClick={() => { i18n.changeLanguage(l.code); setShow(false); }}
+                className={`w-full text-left px-4 py-2 text-xs font-black hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors ${i18n.language.startsWith(l.code) ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                {l.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -79,28 +117,33 @@ const DashboardLayout = ({ defaultView = 'dashboard', renderContent }) => {
   const [activeView, setActiveView] = useState(defaultView);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showGlitchModal, setShowGlitchModal] = useState(false);
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
 
   if (!user) return <Navigate to="/login" replace />;
 
   const isStudent = user.role === 'STUDENT';
   const isAdmin = user.role === 'ADMIN';
 
-  const navItems = isAdmin
+  const navItems = user.role === 'ADMIN'
     ? [
-      { id: 'overview', label: 'Overview' },
+      { id: 'overview', label: t('dashboard') },
       { id: 'all-users', label: 'All Users' },
       { id: 'students', label: 'Students' },
       { id: 'instructors', label: 'Instructors' },
       { id: 'rankings', label: 'Rankings' },
       { id: 'statistics', label: 'Statistics' },
-      { id: 'activity', label: 'Activity Logs' }
-    ]
-    : [
-      { id: 'dashboard', label: 'Dashboard' },
-      { id: 'courses', label: 'My Courses' },
-      { id: 'tests', label: 'Assessments' },
-      { id: 'progress', label: 'Analytics' }
+      { id: 'activity', label: 'Activity Logs' },
+      { id: 'glitches', label: 'Tech Glitches' }
+    ] : user.role === 'IT_ADMIN'
+    ? [
+      { id: 'glitches', label: 'System Issues' }
+    ] : [
+      { id: 'dashboard', label: t('dashboard') },
+      { id: 'courses', label: t('courses') },
+      { id: 'tests', label: t('assessments') },
+      { id: 'progress', label: t('progress') }
     ];
 
   const SidebarContent = () => (
@@ -165,6 +208,16 @@ const DashboardLayout = ({ defaultView = 'dashboard', renderContent }) => {
           </div>
 
           <div className="flex items-center gap-3 lg:gap-6">
+            {user.role !== 'IT_ADMIN' && (
+              <button 
+                onClick={() => setShowGlitchModal(true)}
+                className="p-2 rounded-xl text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 dark:hover:bg-rose-500/20 transition-colors flex items-center justify-center shadow-inner"
+                title="Report Tech Glitch"
+              >
+                <LifeBuoy size={20} />
+              </button>
+            )}
+            <LanguageSelector />
             <ThemeToggle />
 
             {/* User Dropdown */}
@@ -225,6 +278,8 @@ const DashboardLayout = ({ defaultView = 'dashboard', renderContent }) => {
           {renderContent(activeView)}
         </div>
       </main>
+      
+      <ReportGlitchModal isOpen={showGlitchModal} onClose={() => setShowGlitchModal(false)} />
     </div>
   );
 };
@@ -233,6 +288,7 @@ const DashboardRouter = () => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'ADMIN') return <DashboardLayout defaultView="overview" renderContent={(view) => <AdminDash currentView={view} />} />;
+  if (user.role === 'IT_ADMIN') return <DashboardLayout defaultView="glitches" renderContent={(view) => <ITAdminDash currentView={view} />} />;
   if (user.role === 'INSTRUCTOR') return <DashboardLayout defaultView="dashboard" renderContent={(view) => <InstructorDash currentView={view} />} />;
   return <DashboardLayout defaultView="courses" renderContent={(view) => <StudentDash currentView={view} />} />;
 };
