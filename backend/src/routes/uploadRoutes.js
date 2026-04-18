@@ -3,6 +3,8 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { analyzePdf } = require('../controllers/pdfController');
+const { protect } = require('../middleware/authMiddleware');
 
 // Ensure upload directory exists
 const isVercel = !!process.env.VERCEL;
@@ -64,5 +66,9 @@ router.post('/', upload.single('document'), (req, res) => {
         res.status(500).json({ message: 'Server error during upload', error: error.message });
     }
 });
+
+// Route: POST /api/upload/analyze-pdf
+// Reads an already-uploaded PDF from disk and returns AI-generated Q&A
+router.post('/analyze-pdf', protect, analyzePdf);
 
 module.exports = router;

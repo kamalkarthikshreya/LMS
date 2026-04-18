@@ -84,4 +84,131 @@ const generateQuestionPaper = async (courseTitle, topics, targetLang = 'en') => 
     }
 };
 
-module.exports = { generateQuizFromText, generateQuestionPaper };
+/**
+ * Generates Q&A pairs from raw PDF text using Google Gemini.
+ * Restricts questions to the provided syllabus topics.
+ * Falls back to local keyword extraction if no API key.
+ */
+const generateQAFromPdfText = async (pdfText, numQuestions = 8, syllabusTopics = [], subjectTitle = '') => {
+    const trimmedText = pdfText.substring(0, 12000);
+
+    // Build topic context string for prompts
+    const topicsContext = syllabusTopics.length > 0
+        ? `SYLLABUS TOPICS (restrict questions to ONLY these topics):\n${syllabusTopics.map((t, i) => `  ${i + 1}. ${t}`).join('\n')}`
+        : '';
+
+    // ── Local heuristic fallback — ALWAYS produces results ────────────────────
+    const localFallback = (text, n, topics) => {
+        // Clean and split into sentences (lenient: keep even short ones)
+        const rawSentences = text
+            .replace(/\n{2,}/g, ' ')              // collapse multi-newlines
+            .replace(/([.!?])\s+/g, '$1\n')
+            .split('\n')
+            .map(s => s.trim())
+            .filter(s => s.length > 20);           // very lenient min length
+
+        const pairs = [];
+
+        // Strategy 1: For each syllabus topic, find the best matching sentence
+        if (topics.length > 0) {
+            for (const topic of topics) {
+                if (pairs.length >= n) break;
+                const topicWords = topic.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+                // Score each sentence by how many topic words it contains
+                let bestSentence = '';
+                let bestScore = -1;
+                for (const s of rawSentences) {
+                    const lower = s.toLowerCase();
+                    const score = topicWords.filter(w => lower.includes(w)).length;
+                    if (score > bestScore) { bestScore = score; bestSentence = s; }
+                }
+                if (bestSentence) {
+                    pairs.push({
+                        question: `According to the document, what is explained about "${topic}"?`,
+                        answer: bestSentence.length > 20
+                            ? bestSentence
+                            : `The document discusses ${topic} as part of the subject curriculum.`,
+                    });
+                } else {
+                    // No match at all — still generate a generic question
+                    pairs.push({
+                        question: `What does the syllabus cover regarding "${topic}"?`,
+                        answer: `The document addresses "${topic}" as a key topic in this subject area.`,
+                    });
+                }
+            }
+        }
+
+        // Strategy 2: Fill remaining slots with best general sentences from PDF
+        if (pairs.length < n && rawSentences.length > 0) {
+            const used = new Set(pairs.map(p => p.answer));
+            const extras = rawSentences
+                .filter(s => !used.has(s))
+                .sort((a, b) => b.length - a.length) // longer = more informative
+                .slice(0, n - pairs.length);
+            for (const sentence of extras) {
+                const words = sentence.split(/\s+/);
+                const keyIdx = Math.min(Math.floor(words.length * 0.5), words.length - 1);
+                const keyword = words[keyIdx].replace(/[^a-zA-Z0-9]/g, '') || 'this concept';
+                pairs.push({
+                    question: `What does the document explain about "${keyword}"?`,
+                    answer: sentence,
+                });
+            }
+        }
+
+        // Strategy 3: Absolute last resort — generate from topic list alone
+        if (pairs.length === 0) {
+            return topics.slice(0, n).map(topic => ({
+                question: `What is "${topic}" as discussed in this subject?`,
+                answer: `"${topic}" is a key concept in this subject. Refer to the document for detailed explanations and examples.`,
+            }));
+        }
+
+        return pairs.slice(0, n);
+    };
+
+    const hasKey = process.env.GEMINI_API_KEY &&
+        !process.env.GEMINI_API_KEY.includes('your_gemini_api_key') &&
+        process.env.GEMINI_API_KEY.length > 10;
+
+    if (!hasKey) {
+        console.warn('PDF Q&A: No Gemini API key — using local heuristic fallback.');
+        return localFallback(trimmedText, numQuestions, syllabusTopics);
+    }
+
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const prompt = `
+You are an expert educator preparing questions for the subject "${subjectTitle || 'the course'}".
+
+${topicsContext}
+
+Read the document excerpt below and generate exactly ${numQuestions} insightful question-and-answer pairs.
+IMPORTANT RULES:
+- Questions MUST be about topics present in the SYLLABUS TOPICS list above.
+- Do NOT generate questions about topics outside the syllabus, even if the PDF contains such content.
+- Each answer should be 2-4 sentences, detailed, and based directly on the document.
+- If the document does not cover some syllabus topics, focus on the ones it does cover.
+
+Document:
+"""${trimmedText}"""
+
+Return ONLY a valid JSON array (no markdown, no code fences):
+[
+  { "question": "...", "answer": "..." }
+]
+`;
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        const match = text.match(/\[[\s\S]*\]/);
+        if (!match) throw new Error('No JSON array in Gemini response');
+        return JSON.parse(match[0]);
+    } catch (error) {
+        console.error('Gemini PDF Q&A Error — using fallback:', error.message);
+        return localFallback(trimmedText, numQuestions, syllabusTopics);
+    }
+};
+
+module.exports = { generateQuizFromText, generateQuestionPaper, generateQAFromPdfText };
+

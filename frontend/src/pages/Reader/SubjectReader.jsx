@@ -8,6 +8,7 @@ import AiChatbox from '../../components/chat/AiChatbox';
 import ChatBot from '../../components/ChatBot';
 import { useTranslation } from 'react-i18next';
 import { Languages, Loader2 } from 'lucide-react';
+import PdfQAPanel from '../../components/PdfQAPanel';
 
 // Converts any YouTube URL format to the embed URL required by iframes
 const toEmbedUrl = (url) => {
@@ -342,6 +343,15 @@ const SubjectReader = () => {
                                             const pdfPath = para.replace('[PDF]', '').trim();
                                             const baseUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000';
                                             const fullPdfUrl = `${baseUrl}${pdfPath}`;
+
+                                            // Build flat list of all syllabus topics from the subject structure
+                                            const syllabusTopics = (subject.units || []).flatMap(u => [
+                                                u.title,
+                                                ...(u.chapters || []).flatMap(c => [
+                                                    ...(c.sections || []).map(s => s.title).filter(Boolean)
+                                                ])
+                                            ]).filter(Boolean);
+
                                             return (
                                                 <div key={i} className="my-12 animate-fade-in-up">
                                                     <div className="flex flex-col rounded-[2rem] overflow-hidden shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] bg-slate-100 border border-slate-200">
@@ -359,6 +369,8 @@ const SubjectReader = () => {
                                                         </div>
                                                         <iframe src={fullPdfUrl} className="w-full h-[700px] border-none bg-slate-50" title="PDF Document" />
                                                     </div>
+                                                    {/* AI Q&A Panel — restricted to syllabus topics */}
+                                                    <PdfQAPanel pdfUrl={pdfPath} syllabusTopics={syllabusTopics} subjectTitle={subject.title} />
                                                 </div>
                                             );
                                         }
